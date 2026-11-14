@@ -1,0 +1,1809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FixNear – Find trusted services, Book without hassle</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📍</text></svg>">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap');
+    * { font-family: 'Plus Jakarta Sans', sans-serif; }
+    :root { --brand: #2563eb; --brand-dark: #1d4ed8; --brand-light: #eff6ff; --accent: #f59e0b; }
+    .gradient-hero { background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #1e40af 100%); }
+    .gradient-card { background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%); }
+    .card-hover { transition: all 0.2s ease; }
+    .card-hover:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(37,99,235,0.12); }
+    .badge-pending { background:#fef3c7; color:#92400e; border:1px solid #fde68a; }
+    .badge-confirmed { background:#dbeafe; color:#1e40af; border:1px solid #bfdbfe; }
+    .badge-in_progress { background:#e0e7ff; color:#3730a3; border:1px solid #c7d2fe; }
+    .badge-completed { background:#dcfce7; color:#166534; border:1px solid #bbf7d0; }
+    .badge-cancelled { background:#fee2e2; color:#991b1b; border:1px solid #fecaca; }
+    .badge-disputed { background:#fef9c3; color:#854d0e; }
+    .badge-repair { background:#fff7ed; color:#9a3412; border:1px solid #fed7aa; }
+    .badge-civic { background:#ede9fe; color:#5b21b6; border:1px solid #ddd6fe; }
+    .tab-active { background: #2563eb; color: white; }
+    .tab-inactive { color: #64748b; }
+    .tab-inactive:hover { background:#f1f5f9; color:#1e293b; }
+    #map { height: 320px; border-radius: 12px; }
+    .stars { color: #f59e0b; }
+    .modal-overlay { background: rgba(15,23,42,0.6); backdrop-filter: blur(4px); }
+    .input-cls { width:100%; border:1px solid #e2e8f0; border-radius:10px; padding:10px 14px; font-size:13px; outline:none; transition:border-color 0.15s; }
+    .input-cls:focus { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,0.1); }
+    .btn-primary { background:#2563eb; color:white; padding:10px 20px; border-radius:10px; font-weight:700; font-size:13px; cursor:pointer; border:none; transition:all 0.15s; }
+    .btn-primary:hover { background:#1d4ed8; transform:translateY(-1px); }
+    .btn-primary:disabled { background:#94a3b8; cursor:not-allowed; transform:none; }
+    .btn-secondary { background:#f1f5f9; color:#334155; padding:10px 20px; border-radius:10px; font-weight:600; font-size:13px; cursor:pointer; border:1px solid #e2e8f0; transition:all 0.15s; }
+    .btn-secondary:hover { background:#e2e8f0; }
+    .btn-danger { background:#ef4444; color:white; padding:8px 16px; border-radius:8px; font-weight:600; font-size:12px; cursor:pointer; border:none; }
+    .btn-success { background:#22c55e; color:white; padding:8px 16px; border-radius:8px; font-weight:600; font-size:12px; cursor:pointer; border:none; }
+    .sidebar-link { display:flex; align-items:center; gap:10px; padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:600; font-size:13px; color:#475569; transition:all 0.15s; }
+    .sidebar-link:hover { background:#eff6ff; color:#2563eb; }
+    .sidebar-link.active { background:#2563eb; color:white; }
+    .nav-pill { padding:8px 16px; border-radius:20px; font-size:13px; font-weight:700; cursor:pointer; transition:all 0.15s; }
+    .notif-dot { width:8px; height:8px; background:#ef4444; border-radius:50%; position:absolute; top:-2px; right:-2px; }
+    .skeleton { background:linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%); background-size:200% 100%; animation:shimmer 1.5s infinite; }
+    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+    .fade-in { animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+    .provider-card:hover .provider-actions { opacity:1; }
+    .provider-actions { opacity:0; transition:opacity 0.2s; }
+    .rating-star { cursor:pointer; font-size:20px; }
+    .rating-star:hover { transform:scale(1.2); }
+    scrollbar-width:thin;
+  </style>
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-800">
+
+<!-- ============================================================
+     APP SHELL
+============================================================ -->
+<div id="app">
+
+  <!-- ======== TOP NAV ======== -->
+  <nav id="top-nav" class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      
+      <!-- Logo -->
+      <div class="flex items-center gap-3 cursor-pointer" onclick="showPage('home')">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center shadow-md shadow-blue-500/20">
+          <i data-lucide="map-pin" class="w-5 h-5 text-white"></i>
+        </div>
+        <div class="-space-y-1">
+          <div class="font-black text-xl text-slate-900">Fix<span class="text-blue-600">Near</span></div>
+          <div class="text-[10px] text-slate-400 font-medium hidden sm:block">Find trusted services, Book without hassle</div>
+        </div>
+      </div>
+
+      <!-- Center Nav Links (guests only) -->
+      <div id="guest-nav" class="hidden md:flex items-center gap-1">
+        <button onclick="showPage('browse')" class="nav-pill tab-inactive">Browse Services</button>
+        <button onclick="showPage('providers')" class="nav-pill tab-inactive">Find Providers</button>
+        <button onclick="showPage('civic')" class="nav-pill tab-inactive">Civic Issues</button>
+      </div>
+
+      <!-- Right Section -->
+      <div class="flex items-center gap-3">
+        <!-- Notification Bell -->
+        <div id="notif-bell" class="hidden relative cursor-pointer p-2 rounded-full hover:bg-slate-100 transition" onclick="toggleNotifPanel()">
+          <i data-lucide="bell" class="w-5 h-5 text-slate-600"></i>
+          <span id="notif-count-dot" class="notif-dot hidden"></span>
+        </div>
+        <!-- Auth Buttons (guest) -->
+        <div id="auth-btns" class="flex items-center gap-2">
+          <button onclick="openAuthModal('login')" class="nav-pill tab-inactive border border-slate-200">Sign In</button>
+          <button onclick="openAuthModal('register')" class="btn-primary text-xs px-4 py-2">Get Started</button>
+        </div>
+        <!-- User Menu (logged in) -->
+        <div id="user-menu" class="hidden relative">
+          <button onclick="toggleUserMenu()" class="flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-slate-100 transition cursor-pointer">
+            <div id="user-avatar-nav" class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm"></div>
+            <span id="user-name-nav" class="text-sm font-semibold text-slate-700 hidden sm:block"></span>
+            <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400"></i>
+          </button>
+          <div id="user-dropdown" class="hidden absolute right-0 top-12 w-52 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden py-1">
+            <div id="dd-name" class="px-4 py-3 border-b border-slate-100 text-sm font-bold text-slate-900"></div>
+            <button onclick="showPage('dashboard'); closeUserMenu();" class="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"><i data-lucide="layout-dashboard" class="w-4 h-4"></i> Dashboard</button>
+            <button onclick="logout()" class="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"><i data-lucide="log-out" class="w-4 h-4"></i> Sign Out</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Notification Panel -->
+  <div id="notif-panel" class="hidden fixed top-16 right-4 w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 z-50 overflow-hidden">
+    <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+      <span class="font-bold text-sm text-slate-900">Notifications</span>
+      <button onclick="markAllRead()" class="text-xs text-blue-600 font-semibold hover:underline">Mark all read</button>
+    </div>
+    <div id="notif-list" class="max-h-80 overflow-y-auto divide-y divide-slate-100"></div>
+  </div>
+
+  <!-- ======== PAGES ======== -->
+
+  <!-- PAGE: HOME -->
+  <div id="page-home" class="page-section">
+    <!-- Hero -->
+    <section class="gradient-hero text-white py-20 px-4 sm:px-6">
+      <div class="max-w-4xl mx-auto text-center">
+        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-200 text-sm font-semibold mb-6">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          Serving 500+ Neighborhoods • Hyperlocal & Verified
+        </div>
+        <h1 class="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-tight">
+          Find <span class="text-blue-400">Trusted</span> Services,<br>
+          <span class="text-amber-400">Book</span> Without Hassle
+        </h1>
+        <p class="text-blue-100 text-lg mt-5 max-w-2xl mx-auto">
+          Connect with verified local repair professionals, track civic issues, and get things fixed — right in your neighborhood.
+        </p>
+        
+        <!-- Search Bar -->
+        <div class="mt-8 max-w-xl mx-auto">
+          <div class="bg-white rounded-2xl shadow-2xl shadow-blue-900/30 p-2 flex items-center gap-2">
+            <div class="flex-1 px-3 flex items-center gap-2">
+              <i data-lucide="search" class="w-5 h-5 text-slate-400"></i>
+              <input id="home-search" type="text" placeholder="What do you need fixed?" class="flex-1 py-2 text-slate-800 text-sm font-medium outline-none bg-transparent">
+            </div>
+            <div class="hidden sm:flex items-center gap-2 px-3 border-l border-slate-200">
+              <i data-lucide="map-pin" class="w-4 h-4 text-slate-400"></i>
+              <input id="home-city" type="text" placeholder="Your city" class="w-24 py-2 text-slate-700 text-sm outline-none bg-transparent">
+            </div>
+            <button onclick="doHomeSearch()" class="btn-primary px-6 py-3 rounded-xl text-sm">Find Now</button>
+          </div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="mt-10 grid grid-cols-3 gap-4 max-w-sm mx-auto sm:max-w-none sm:grid-cols-3 sm:gap-6">
+          <div class="text-center">
+            <div class="text-3xl font-black text-white">2,400+</div>
+            <div class="text-blue-200 text-xs font-medium mt-0.5">Jobs Completed</div>
+          </div>
+          <div class="text-center">
+            <div class="text-3xl font-black text-white">150+</div>
+            <div class="text-blue-200 text-xs font-medium mt-0.5">Verified Providers</div>
+          </div>
+          <div class="text-center">
+            <div class="text-3xl font-black text-white">4.8★</div>
+            <div class="text-blue-200 text-xs font-medium mt-0.5">Average Rating</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Service Categories -->
+    <section class="max-w-7xl mx-auto px-4 sm:px-6 py-14">
+      <div class="text-center mb-10">
+        <h2 class="text-2xl sm:text-3xl font-black text-slate-900">What do you need help with?</h2>
+        <p class="text-slate-500 mt-2 text-sm">Professional services for every home & civic need</p>
+      </div>
+      <div id="home-categories" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4"></div>
+    </section>
+
+    <!-- How It Works -->
+    <section class="bg-white py-14 px-4 sm:px-6">
+      <div class="max-w-4xl mx-auto">
+        <div class="text-center mb-10">
+          <h2 class="text-2xl sm:text-3xl font-black text-slate-900">How FixNear Works</h2>
+          <p class="text-slate-500 mt-2 text-sm">Three simple steps to get any issue resolved</p>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-8">
+          <div class="text-center">
+            <div class="w-14 h-14 mx-auto rounded-2xl bg-blue-50 flex items-center justify-center mb-4">
+              <i data-lucide="file-text" class="w-7 h-7 text-blue-600"></i>
+            </div>
+            <h3 class="font-bold text-slate-900 mb-1">1. Post your issue</h3>
+            <p class="text-slate-500 text-sm">Describe the problem, add photos, and pick a date that works for you.</p>
+          </div>
+          <div class="text-center">
+            <div class="w-14 h-14 mx-auto rounded-2xl bg-amber-50 flex items-center justify-center mb-4">
+              <i data-lucide="users" class="w-7 h-7 text-amber-500"></i>
+            </div>
+            <h3 class="font-bold text-slate-900 mb-1">2. Get quotes fast</h3>
+            <p class="text-slate-500 text-sm">Nearby verified providers send competitive quotes. Compare and choose the best.</p>
+          </div>
+          <div class="text-center">
+            <div class="w-14 h-14 mx-auto rounded-2xl bg-emerald-50 flex items-center justify-center mb-4">
+              <i data-lucide="check-circle-2" class="w-7 h-7 text-emerald-500"></i>
+            </div>
+            <h3 class="font-bold text-slate-900 mb-1">3. Job done!</h3>
+            <p class="text-slate-500 text-sm">Track progress in real-time, pay after satisfaction, and leave a review.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Top Providers Preview -->
+    <section class="max-w-7xl mx-auto px-4 sm:px-6 py-14">
+      <div class="flex items-center justify-between mb-8">
+        <div>
+          <h2 class="text-2xl font-black text-slate-900">Top Rated Providers</h2>
+          <p class="text-slate-500 text-sm mt-0.5">Verified, background-checked professionals near you</p>
+        </div>
+        <button onclick="showPage('providers')" class="btn-secondary text-xs px-4 py-2">View All</button>
+      </div>
+      <div id="home-providers" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5"></div>
+    </section>
+
+    <!-- CTA Banner -->
+    <section class="bg-gradient-to-r from-blue-600 to-indigo-700 py-14 px-4 sm:px-6 text-white text-center">
+      <h2 class="text-2xl sm:text-3xl font-black mb-3">Are you a skilled professional?</h2>
+      <p class="text-blue-100 max-w-xl mx-auto text-sm mb-6">Join 150+ verified service providers on FixNear and start receiving job requests in your neighborhood.</p>
+      <button onclick="openAuthModal('register', 'provider')" class="bg-white text-blue-700 font-black px-8 py-3 rounded-xl text-sm hover:bg-blue-50 transition">Join as Service Provider</button>
+    </section>
+  </div>
+
+  <!-- PAGE: BROWSE / SERVICES -->
+  <div id="page-browse" class="page-section hidden max-w-7xl mx-auto px-4 sm:px-6 py-8">
+    <div class="flex flex-col lg:flex-row gap-8">
+      <!-- Sidebar Filters -->
+      <aside class="lg:w-64 shrink-0">
+        <div class="bg-white rounded-2xl border border-slate-200 p-5 sticky top-24 shadow-sm">
+          <h3 class="font-bold text-slate-900 mb-4 flex items-center gap-2"><i data-lucide="sliders-horizontal" class="w-4 h-4 text-blue-600"></i> Filters</h3>
+          <div class="space-y-5">
+            <div>
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">Type</label>
+              <div class="space-y-1.5">
+                <label class="flex items-center gap-2 cursor-pointer text-sm"><input type="radio" name="btype" value="all" checked onchange="fetchBrowse()"> All</label>
+                <label class="flex items-center gap-2 cursor-pointer text-sm"><input type="radio" name="btype" value="repair" onchange="fetchBrowse()"> 🛠️ Repair & Home</label>
+                <label class="flex items-center gap-2 cursor-pointer text-sm"><input type="radio" name="btype" value="civic" onchange="fetchBrowse()"> 🏛️ Civic Issues</label>
+              </div>
+            </div>
+            <div>
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">Status</label>
+              <select id="browse-status" onchange="fetchBrowse()" class="input-cls text-xs py-2">
+                <option value="all">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="in_progress">In Progress</option>
+                <option value="completed">Completed</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">Near Me (km)</label>
+              <select id="browse-radius" onchange="fetchBrowse()" class="input-cls text-xs py-2">
+                <option value="">Anywhere</option>
+                <option value="2">Within 2 km</option>
+                <option value="5">Within 5 km</option>
+                <option value="10">Within 10 km</option>
+                <option value="25">Within 25 km</option>
+              </select>
+            </div>
+            <button onclick="fetchBrowse()" class="btn-primary w-full text-xs py-2">Apply Filters</button>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main Feed -->
+      <div class="flex-1">
+        <div class="flex items-center justify-between mb-5">
+          <h2 class="text-xl font-black text-slate-900">Public Issue Board</h2>
+          <div class="relative">
+            <i data-lucide="search" class="w-4 h-4 absolute left-3 top-3 text-slate-400"></i>
+            <input type="text" id="browse-search" oninput="debounce(fetchBrowse, 400)()" placeholder="Search issues..." class="pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 w-48">
+          </div>
+        </div>
+        <div id="browse-map" class="mb-5"></div>
+        <div id="browse-list" class="space-y-4"></div>
+        <div id="browse-empty" class="hidden text-center py-16 bg-white rounded-2xl border border-dashed border-slate-300">
+          <i data-lucide="inbox" class="w-12 h-12 mx-auto text-slate-300 mb-2"></i>
+          <p class="text-slate-600 font-semibold">No issues found</p>
+          <p class="text-xs text-slate-400 mt-1">Try changing filters or expanding your radius</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE: PROVIDERS -->
+  <div id="page-providers" class="page-section hidden max-w-7xl mx-auto px-4 sm:px-6 py-8">
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h1 class="text-2xl font-black text-slate-900">Find Service Providers</h1>
+        <p class="text-slate-500 text-sm mt-0.5">Verified professionals ready to help near you</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <input type="text" id="provider-search" oninput="debounce(fetchProviders, 400)()" placeholder="Search skill or name..." class="input-cls text-xs py-2 w-48">
+        <select id="provider-radius" onchange="fetchProviders()" class="input-cls text-xs py-2 w-36">
+          <option value="">Any Distance</option>
+          <option value="5">Within 5 km</option>
+          <option value="10">Within 10 km</option>
+          <option value="25">Within 25 km</option>
+        </select>
+      </div>
+    </div>
+    <div id="providers-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+    <div id="providers-empty" class="hidden text-center py-16"><p class="text-slate-500">No providers found</p></div>
+  </div>
+
+  <!-- PAGE: CIVIC -->
+  <div id="page-civic" class="page-section hidden max-w-7xl mx-auto px-4 sm:px-6 py-8">
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h1 class="text-2xl font-black text-slate-900">🏛️ Civic Issue Tracker</h1>
+        <p class="text-slate-500 text-sm">Report and track civic problems in your neighborhood</p>
+      </div>
+      <button onclick="requireLoginThen(() => openPostModal('civic'))" class="btn-primary text-xs px-4 py-2 flex items-center gap-1.5">
+        <i data-lucide="plus" class="w-4 h-4"></i> Report Issue
+      </button>
+    </div>
+    <div id="civic-map" class="mb-6" style="height:300px; border-radius:12px;"></div>
+    <div id="civic-list" class="space-y-4"></div>
+  </div>
+
+  <!-- PAGE: DASHBOARD -->
+  <div id="page-dashboard" class="page-section hidden">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex flex-col lg:flex-row gap-6">
+      <!-- Sidebar -->
+      <aside class="lg:w-56 shrink-0">
+        <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
+          <div id="dash-user-info" class="text-center mb-4 pb-4 border-b border-slate-100"></div>
+          <nav id="dash-nav" class="space-y-1"></nav>
+        </div>
+      </aside>
+      <!-- Main Content -->
+      <div class="flex-1 min-w-0">
+        <div id="dash-content" class="space-y-6"></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+
+<!-- ============================================================
+     MODALS
+============================================================ -->
+
+<!-- Auth Modal -->
+<div id="auth-modal" class="fixed inset-0 modal-overlay z-[100] hidden flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden fade-in">
+    <!-- Tabs -->
+    <div class="flex border-b border-slate-100">
+      <button id="auth-tab-login" onclick="switchAuthTab('login')" class="flex-1 py-4 text-sm font-bold text-center transition tab-active">Sign In</button>
+      <button id="auth-tab-register" onclick="switchAuthTab('register')" class="flex-1 py-4 text-sm font-bold text-center transition tab-inactive">Create Account</button>
+      <button onclick="closeAuthModal()" class="px-4 text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+    </div>
+    <div class="p-6">
+      <!-- Login Form -->
+      <form id="login-form" onsubmit="doLogin(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1.5">Email</label>
+          <input id="login-email" type="email" required placeholder="you@example.com" class="input-cls">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1.5">Password</label>
+          <input id="login-password" type="password" required placeholder="••••••••" class="input-cls">
+        </div>
+        <div class="text-xs text-slate-500 bg-blue-50 p-3 rounded-xl border border-blue-100">
+          <strong>Demo credentials:</strong><br>
+          Customer: priya@example.com / pass123<br>
+          Provider: ramesh@fixnear.com / pass123<br>
+          Admin: admin@fixnear.com / admin123
+        </div>
+        <button type="submit" id="login-btn" class="btn-primary w-full py-3">Sign In to FixNear</button>
+      </form>
+      <!-- Register Form -->
+      <form id="register-form" onsubmit="doRegister(event)" class="space-y-3 hidden">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1.5">Full Name</label>
+            <input id="reg-name" type="text" required placeholder="Your name" class="input-cls">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1.5">Phone</label>
+            <input id="reg-phone" type="tel" placeholder="10 digit number" class="input-cls">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1.5">Email</label>
+          <input id="reg-email" type="email" required placeholder="you@example.com" class="input-cls">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1.5">Password</label>
+          <input id="reg-password" type="password" required placeholder="Min 6 characters" class="input-cls">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1.5">Join As</label>
+          <div id="reg-role-selector" class="grid grid-cols-2 gap-2">
+            <label class="border-2 border-blue-500 bg-blue-50 p-3 rounded-xl cursor-pointer text-center" id="role-label-customer">
+              <input type="radio" name="reg_role" value="customer" checked class="hidden" onchange="highlightRole()">
+              <div class="text-lg mb-0.5">👤</div>
+              <div class="text-xs font-bold text-slate-900">Customer</div>
+              <div class="text-[10px] text-slate-500">Book services</div>
+            </label>
+            <label class="border border-slate-200 p-3 rounded-xl cursor-pointer text-center" id="role-label-provider">
+              <input type="radio" name="reg_role" value="provider" class="hidden" onchange="highlightRole()">
+              <div class="text-lg mb-0.5">🛠️</div>
+              <div class="text-xs font-bold text-slate-900">Service Provider</div>
+              <div class="text-[10px] text-slate-500">Offer services</div>
+            </label>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1.5">City</label>
+          <input id="reg-city" type="text" placeholder="Delhi, Mumbai..." class="input-cls">
+        </div>
+        <button type="submit" id="reg-btn" class="btn-primary w-full py-3">Create Account</button>
+      </form>
+      <div id="auth-error" class="hidden mt-3 text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl p-3 text-center"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Post Booking Modal -->
+<div id="post-modal" class="fixed inset-0 modal-overlay z-[100] hidden flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl max-w-xl w-full shadow-2xl max-h-[90vh] overflow-y-auto fade-in">
+    <div class="sticky top-0 bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between z-10">
+      <div>
+        <h3 class="font-black text-slate-900 text-lg" id="post-modal-title">Post a Repair Request</h3>
+        <p class="text-xs text-slate-500 mt-0.5">Get quotes from verified providers near you</p>
+      </div>
+      <button onclick="closePostModal()" class="p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+    </div>
+    <form id="post-booking-form" onsubmit="submitBooking(event)" class="p-6 space-y-4">
+      <input type="hidden" id="post-type" value="repair">
+      <div>
+        <label class="block text-xs font-bold text-slate-700 mb-1.5">Issue Title *</label>
+        <input id="pb-title" type="text" required placeholder="e.g. Bathroom pipe burst, AC not cooling" class="input-cls">
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1.5">Category</label>
+          <select id="pb-category" class="input-cls">
+            <option value="">Select category</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1.5">Urgency</label>
+          <select id="pb-priority" class="input-cls">
+            <option value="normal">Normal</option>
+            <option value="high">High</option>
+            <option value="urgent">🚨 Urgent</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-700 mb-1.5">Describe the problem *</label>
+        <textarea id="pb-description" rows="3" required placeholder="Provide as much detail as possible..." class="input-cls"></textarea>
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-700 mb-1.5">Address / Location *</label>
+        <input id="pb-address" type="text" required placeholder="Flat, block, street, landmark..." class="input-cls">
+      </div>
+      <div id="repair-only-fields">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1.5">Preferred Date</label>
+            <input id="pb-date" type="date" class="input-cls">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1.5">Preferred Time</label>
+            <select id="pb-time" class="input-cls">
+              <option value="">Flexible</option>
+              <option>08:00 AM</option><option>09:00 AM</option><option>10:00 AM</option>
+              <option>11:00 AM</option><option>12:00 PM</option><option>02:00 PM</option>
+              <option>03:00 PM</option><option>04:00 PM</option><option>05:00 PM</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3 mt-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1.5">Budget Min (₹)</label>
+            <input id="pb-budget-min" type="number" placeholder="e.g. 500" class="input-cls">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1.5">Budget Max (₹)</label>
+            <input id="pb-budget-max" type="number" placeholder="e.g. 2000" class="input-cls">
+          </div>
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-700 mb-1.5">Attach Photo (optional)</label>
+        <label class="border-2 border-dashed border-slate-200 hover:border-blue-400 rounded-xl p-4 text-center cursor-pointer block transition" onclick="document.getElementById('pb-photo').click()">
+          <i data-lucide="camera" class="w-6 h-6 mx-auto text-slate-400 mb-1"></i>
+          <span id="pb-photo-label" class="text-xs text-slate-500">Click to upload photo</span>
+          <input type="file" id="pb-photo" accept="image/*" class="hidden" onchange="this.nextElementSibling.textContent=this.files[0]?.name||'Click to upload'">
+        </label>
+      </div>
+      <div class="flex gap-3 pt-2">
+        <button type="button" onclick="closePostModal()" class="btn-secondary flex-1">Cancel</button>
+        <button type="submit" id="pb-submit" class="btn-primary flex-1">Post Request</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Quote Submission Modal -->
+<div id="quote-modal" class="fixed inset-0 modal-overlay z-[100] hidden flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl fade-in">
+    <div class="border-b border-slate-100 px-6 py-4 flex items-center justify-between">
+      <h3 class="font-black text-slate-900">Submit Your Quote</h3>
+      <button onclick="closeQuoteModal()" class="p-2 rounded-full hover:bg-slate-100 text-slate-400"><i data-lucide="x" class="w-5 h-5"></i></button>
+    </div>
+    <form id="quote-form" onsubmit="submitQuote(event)" class="p-6 space-y-4">
+      <input type="hidden" id="quote-booking-id">
+      <div id="quote-job-preview" class="bg-slate-50 p-3 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700"></div>
+      <div>
+        <label class="block text-xs font-bold text-slate-700 mb-1.5">Your Quote Amount (₹) *</label>
+        <input id="quote-amount" type="number" required placeholder="e.g. 1200" class="input-cls text-lg font-bold">
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-700 mb-1.5">Availability / Message</label>
+        <textarea id="quote-message" rows="3" placeholder="When can you arrive? What does the quote include?" class="input-cls"></textarea>
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-700 mb-1.5">ETA (days)</label>
+        <select id="quote-eta" class="input-cls">
+          <option value="0">Same day</option>
+          <option value="1" selected>Within 1 day</option>
+          <option value="2">Within 2 days</option>
+          <option value="3">Within 3 days</option>
+        </select>
+      </div>
+      <div class="flex gap-3">
+        <button type="button" onclick="closeQuoteModal()" class="btn-secondary flex-1">Cancel</button>
+        <button type="submit" class="btn-primary flex-1">Send Quote</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Review Modal -->
+<div id="review-modal" class="fixed inset-0 modal-overlay z-[100] hidden flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl fade-in">
+    <div class="border-b border-slate-100 px-6 py-4 flex items-center justify-between">
+      <h3 class="font-black text-slate-900">Leave a Review</h3>
+      <button onclick="closeReviewModal()" class="p-2 rounded-full hover:bg-slate-100 text-slate-400"><i data-lucide="x" class="w-5 h-5"></i></button>
+    </div>
+    <form id="review-form" onsubmit="submitReview(event)" class="p-6 space-y-4">
+      <input type="hidden" id="review-booking-id">
+      <div id="review-job-preview" class="bg-slate-50 p-3 rounded-xl border border-slate-200 text-sm text-slate-700"></div>
+      <div class="text-center">
+        <p class="text-xs font-bold text-slate-600 mb-2">Rate your experience</p>
+        <div id="star-rater" class="flex justify-center gap-2">
+          <span class="rating-star" onclick="setRating(1)">☆</span>
+          <span class="rating-star" onclick="setRating(2)">☆</span>
+          <span class="rating-star" onclick="setRating(3)">☆</span>
+          <span class="rating-star" onclick="setRating(4)">☆</span>
+          <span class="rating-star" onclick="setRating(5)">☆</span>
+        </div>
+        <input type="hidden" id="review-rating" value="0">
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-700 mb-1.5">Your Comment</label>
+        <textarea id="review-comment" rows="3" placeholder="How was the service? Would you recommend?" class="input-cls"></textarea>
+      </div>
+      <div class="flex gap-3">
+        <button type="button" onclick="closeReviewModal()" class="btn-secondary flex-1">Cancel</button>
+        <button type="submit" class="btn-primary flex-1">Submit Review</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Booking Detail Modal -->
+<div id="booking-detail-modal" class="fixed inset-0 modal-overlay z-[100] hidden flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto fade-in">
+    <div class="sticky top-0 bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between z-10">
+      <h3 class="font-black text-slate-900">Booking Details</h3>
+      <button onclick="closeBookingDetail()" class="p-2 rounded-full hover:bg-slate-100 text-slate-400"><i data-lucide="x" class="w-5 h-5"></i></button>
+    </div>
+    <div id="booking-detail-body" class="p-6"></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="fixed bottom-6 right-6 z-[200] hidden">
+  <div id="toast-body" class="flex items-center gap-3 px-5 py-3 rounded-2xl shadow-xl text-sm font-semibold text-white min-w-[220px]"></div>
+</div>
+
+<!-- ============================================================
+     SCRIPTS
+============================================================ -->
+<script>
+// ==================== STATE ====================
+let currentUser = null;
+let token = localStorage.getItem('fixnear_token');
+let userCoords = { lat: 28.6139, lon: 77.2090 };
+let geoLocated = false;
+let browseMap = null;
+let browseMapMarkers = [];
+let civicMap = null;
+let civicMapMarkers = [];
+
+// ==================== INIT ====================
+async function init() {
+  lucide.createIcons();
+  loadCategories();
+  loadHomeSections();
+
+  if (token) {
+    await loadCurrentUser();
+  }
+
+  detectLocation();
+  window.onclick = (e) => {
+    if (!document.getElementById('user-dropdown').contains(e.target) && !document.getElementById('user-menu').contains(e.target)) {
+      document.getElementById('user-dropdown').classList.add('hidden');
+    }
+    if (!document.getElementById('notif-panel').contains(e.target) && !document.getElementById('notif-bell').contains(e.target)) {
+      document.getElementById('notif-panel').classList.add('hidden');
+    }
+  };
+}
+
+function detectLocation() {
+  if ('geolocation' in navigator) {
+    navigator.geolocation.getCurrentPosition(pos => {
+      userCoords = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+      geoLocated = true;
+    }, () => {});
+  }
+}
+
+async function loadCurrentUser() {
+  try {
+    const res = await api('GET', '/api/auth/me');
+    if (res.id) {
+      currentUser = res;
+      updateNavForUser(res);
+      loadNotifications();
+    }
+  } catch {
+    token = null;
+    localStorage.removeItem('fixnear_token');
+  }
+}
+
+function updateNavForUser(user) {
+  document.getElementById('auth-btns').classList.add('hidden');
+  document.getElementById('guest-nav').classList.add('hidden');
+  document.getElementById('user-menu').classList.remove('hidden');
+  document.getElementById('notif-bell').classList.remove('hidden');
+  document.getElementById('user-name-nav').textContent = user.name.split(' ')[0];
+  document.getElementById('user-avatar-nav').textContent = user.name[0].toUpperCase();
+  document.getElementById('dd-name').textContent = user.name;
+}
+
+// ==================== API ====================
+async function api(method, path, body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (token) opts.headers['Authorization'] = `Bearer ${token}`;
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(path, opts);
+  const data = await res.json();
+  if (!res.ok) throw data;
+  return data;
+}
+
+async function apiFormData(path, formData) {
+  const opts = { method: 'POST', body: formData };
+  if (token) opts.headers = { 'Authorization': `Bearer ${token}` };
+  const res = await fetch(path, opts);
+  const data = await res.json();
+  if (!res.ok) throw data;
+  return data;
+}
+
+// ==================== PAGES ====================
+function showPage(page) {
+  document.querySelectorAll('.page-section').forEach(el => el.classList.add('hidden'));
+  document.getElementById(`page-${page}`).classList.remove('hidden');
+
+  if (page === 'browse') fetchBrowse();
+  if (page === 'providers') fetchProviders();
+  if (page === 'civic') fetchCivic();
+  if (page === 'dashboard') {
+    if (!currentUser) { openAuthModal('login'); return; }
+    renderDashboard();
+  }
+
+  lucide.createIcons();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function requireLoginThen(fn) {
+  if (!currentUser) { openAuthModal('login'); return; }
+  fn();
+}
+
+// ==================== HOME ====================
+async function loadCategories() {
+  try {
+    const cats = await api('GET', '/api/categories');
+    document.getElementById('home-categories').innerHTML = cats.map(c => `
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 text-center cursor-pointer card-hover shadow-sm" onclick="browseByCategory('${c.id}', '${c.type}')">
+        <div class="text-3xl mb-2">${c.icon}</div>
+        <div class="font-bold text-sm text-slate-900">${c.name}</div>
+        <div class="text-xs text-slate-400 mt-0.5">${c.type === 'civic' ? 'Civic' : 'Home'}</div>
+      </div>
+    `).join('');
+    // Populate post modal categories
+    const sel = document.getElementById('pb-category');
+    cats.forEach(c => { const o = document.createElement('option'); o.value = c.id; o.textContent = `${c.icon} ${c.name}`; sel.appendChild(o); });
+    lucide.createIcons();
+  } catch {}
+}
+
+async function loadHomeSections() {
+  // Top providers
+  try {
+    const providers = await api('GET', '/api/providers');
+    document.getElementById('home-providers').innerHTML = providers.slice(0, 4).map(p => renderProviderCard(p)).join('');
+    lucide.createIcons();
+  } catch {}
+}
+
+function browseByCategory(catId, type) {
+  if (type === 'civic') showPage('civic');
+  else {
+    showPage('browse');
+    document.querySelector('input[name="btype"][value="repair"]').checked = true;
+    fetchBrowse();
+  }
+}
+
+function doHomeSearch() {
+  const q = document.getElementById('home-search').value;
+  document.getElementById('browse-search').value = q;
+  showPage('browse');
+}
+
+// ==================== BROWSE ====================
+async function fetchBrowse() {
+  const type = document.querySelector('input[name="btype"]:checked')?.value || 'all';
+  const status = document.getElementById('browse-status').value;
+  const radius = document.getElementById('browse-radius').value;
+  const search = document.getElementById('browse-search').value;
+
+  const params = new URLSearchParams();
+  if (type !== 'all') params.append('type', type);
+  if (status !== 'all') params.append('status', status);
+  if (search) params.append('search', search);
+  if (radius && geoLocated) { params.append('lat', userCoords.lat); params.append('lon', userCoords.lon); params.append('radius', radius); }
+
+  try {
+    const jobs = await api('GET', `/api/jobs/public?${params}`);
+    updateBrowseMap(jobs);
+    document.getElementById('browse-list').innerHTML = jobs.map(j => renderJobCard(j, 'browse')).join('');
+    document.getElementById('browse-empty').classList.toggle('hidden', jobs.length > 0);
+    lucide.createIcons();
+  } catch {}
+}
+
+function updateBrowseMap(jobs) {
+  if (!browseMap) {
+    browseMap = L.map('browse-map').setView([userCoords.lat, userCoords.lon], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(browseMap);
+    document.getElementById('browse-map').style.height = '250px';
+  }
+  browseMapMarkers.forEach(m => browseMap.removeLayer(m));
+  browseMapMarkers = [];
+  jobs.forEach(j => {
+    const color = j.type === 'civic' ? '#7c3aed' : '#2563eb';
+    const m = L.circleMarker([j.latitude || 28.6139, j.longitude || 77.2090], { radius: 8, fillColor: color, color: '#fff', weight: 2, fillOpacity: 0.9 }).addTo(browseMap);
+    m.bindPopup(`<div style="font-size:12px;min-width:160px"><strong>${esc(j.title)}</strong><br><span style="color:#64748b">${esc(j.address)}</span></div>`);
+    browseMapMarkers.push(m);
+  });
+}
+
+// ==================== PROVIDERS ====================
+async function fetchProviders() {
+  const search = document.getElementById('provider-search').value;
+  const radius = document.getElementById('provider-radius').value;
+  const params = new URLSearchParams();
+  if (search) params.append('skill', search);
+  if (radius && geoLocated) { params.append('lat', userCoords.lat); params.append('lon', userCoords.lon); params.append('radius', radius); }
+
+  try {
+    const providers = await api('GET', `/api/providers?${params}`);
+    document.getElementById('providers-grid').innerHTML = providers.map(p => renderProviderCard(p, true)).join('');
+    document.getElementById('providers-empty').classList.toggle('hidden', providers.length > 0);
+    lucide.createIcons();
+  } catch {}
+}
+
+function renderProviderCard(p, big = false) {
+  const stars = Math.round(p.avg_rating || 0);
+  const starStr = '★'.repeat(stars) + '☆'.repeat(5 - stars);
+  let skillsArr = [];
+  try { skillsArr = JSON.parse(p.skills || '[]'); } catch {}
+
+  return `
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm card-hover p-5 provider-card">
+      <div class="flex items-start gap-3 mb-3">
+        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-black text-lg shrink-0">
+          ${(p.business_name || p.name)[0]}
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-1.5">
+            <span class="font-bold text-sm text-slate-900 truncate">${esc(p.business_name || p.name)}</span>
+            ${p.is_verified ? '<span title="Verified" class="text-emerald-600 shrink-0">✓</span>' : ''}
+          </div>
+          <div class="text-xs text-slate-500">${p.experience_years || 0}+ yrs exp</div>
+          <div class="text-xs mt-0.5"><span class="stars">${starStr}</span> <span class="text-slate-500">(${p.total_reviews || 0})</span></div>
+        </div>
+        ${p.distance_km !== undefined ? `<span class="text-[11px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg shrink-0">${p.distance_km} km</span>` : ''}
+      </div>
+      <p class="text-xs text-slate-500 line-clamp-2 mb-3">${esc(p.bio || '')}</p>
+      <div class="flex flex-wrap gap-1 mb-3">
+        ${skillsArr.slice(0, 3).map(s => `<span class="text-[10px] font-semibold bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full border border-blue-100">${esc(s)}</span>`).join('')}
+      </div>
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-bold text-slate-900">${p.hourly_rate ? `₹${p.hourly_rate}/hr` : 'Quote-based'}</span>
+        <div class="flex gap-2 provider-actions">
+          <button onclick="requireLoginThen(() => openPostModal('repair'))" class="btn-primary text-xs px-3 py-1.5">Book Now</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ==================== CIVIC ====================
+async function fetchCivic() {
+  try {
+    const params = new URLSearchParams({ type: 'civic' });
+    const jobs = await api('GET', `/api/jobs/public?${params}`);
+    updateCivicMap(jobs);
+    document.getElementById('civic-list').innerHTML = jobs.map(j => renderJobCard(j, 'civic')).join('');
+    lucide.createIcons();
+  } catch {}
+}
+
+function updateCivicMap(jobs) {
+  if (!civicMap) {
+    civicMap = L.map('civic-map').setView([userCoords.lat, userCoords.lon], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(civicMap);
+  }
+  civicMapMarkers.forEach(m => civicMap.removeLayer(m));
+  civicMapMarkers = [];
+  jobs.forEach(j => {
+    const statusColor = { pending: '#f59e0b', in_progress: '#6366f1', completed: '#22c55e', confirmed: '#3b82f6' }[j.status] || '#94a3b8';
+    const m = L.circleMarker([j.latitude || 28.6139, j.longitude || 77.2090], { radius: 9, fillColor: statusColor, color: '#fff', weight: 2, fillOpacity: 0.9 }).addTo(civicMap);
+    m.bindPopup(`<div style="font-size:12px"><strong>${esc(j.title)}</strong><br>${esc(j.address)}</div>`);
+    civicMapMarkers.push(m);
+  });
+}
+
+// ==================== JOB CARD ====================
+function renderJobCard(j, context) {
+  const statusColors = { pending:'badge-pending', confirmed:'badge-confirmed', in_progress:'badge-in_progress', completed:'badge-completed', cancelled:'badge-cancelled' };
+  const priorityColors = { urgent:'text-red-600 font-black', high:'text-orange-600 font-bold', normal:'text-slate-600', low:'text-slate-400' };
+
+  return `
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 card-hover fade-in cursor-pointer" onclick="openBookingDetail(${j.id})">
+      <div class="flex flex-col sm:flex-row sm:items-start gap-4">
+        <div class="w-11 h-11 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-2xl shrink-0">${j.category_icon || '📋'}</div>
+        <div class="flex-1 min-w-0">
+          <div class="flex flex-wrap items-center gap-2 mb-1">
+            <span class="text-xs font-bold px-2 py-0.5 rounded-full ${statusColors[j.status] || 'bg-slate-100 text-slate-700'}">${j.status.replace('_', ' ')}</span>
+            <span class="text-xs font-semibold px-2 py-0.5 rounded-full badge-${j.type}">${j.type}</span>
+            ${j.priority === 'urgent' || j.priority === 'high' ? `<span class="text-xs ${priorityColors[j.priority]}">⚡ ${j.priority}</span>` : ''}
+            ${j.distance_km !== undefined ? `<span class="text-[11px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg ml-auto">${j.distance_km} km away</span>` : ''}
+          </div>
+          <h3 class="font-bold text-slate-900 text-sm mb-1 line-clamp-1">${esc(j.title)}</h3>
+          <p class="text-xs text-slate-500 line-clamp-2 mb-2">${esc(j.description)}</p>
+          <div class="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+            <span class="flex items-center gap-1"><i data-lucide="map-pin" class="w-3 h-3"></i>${esc(j.address)}</span>
+            ${j.scheduled_date ? `<span class="flex items-center gap-1"><i data-lucide="calendar" class="w-3 h-3"></i>${j.scheduled_date}</span>` : ''}
+            ${j.budget_max ? `<span class="flex items-center gap-1 text-emerald-700 font-semibold"><i data-lucide="tag" class="w-3 h-3"></i>Up to ₹${j.budget_max}</span>` : ''}
+          </div>
+        </div>
+        <div class="flex flex-row sm:flex-col items-center sm:items-end gap-2 shrink-0">
+          <button onclick="event.stopPropagation(); upvoteBooking(${j.id})" class="flex items-center gap-1 text-xs text-slate-500 hover:text-blue-600 transition">
+            <i data-lucide="thumbs-up" class="w-4 h-4"></i> <span id="upvotes-${j.id}">${j.upvotes || 0}</span>
+          </button>
+          <span class="text-[10px] text-slate-400">${j.customer_name || 'Anonymous'}</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ==================== BOOKING DETAIL ====================
+async function openBookingDetail(id) {
+  try {
+    const booking = await api('GET', `/api/bookings/${id}`);
+    const modal = document.getElementById('booking-detail-modal');
+    const body = document.getElementById('booking-detail-body');
+
+    const isProvider = currentUser?.role === 'provider';
+    const isCustomer = currentUser?.role === 'customer';
+    const isOwner = isCustomer && booking.customer_id === currentUser?.id;
+    const isAssignedProvider = isProvider && booking.provider_id === currentUser?.id;
+
+    const statusColors = { pending:'badge-pending', confirmed:'badge-confirmed', in_progress:'badge-in_progress', completed:'badge-completed' };
+    const quotes = booking.quotes || [];
+
+    body.innerHTML = `
+      <div class="space-y-5">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="text-xs font-bold px-3 py-1 rounded-full ${statusColors[booking.status] || 'bg-slate-100'}">${booking.status.replace('_',' ')}</span>
+          <span class="text-xs font-semibold badge-${booking.type} px-3 py-1 rounded-full">${booking.type}</span>
+          ${booking.priority === 'urgent' ? '<span class="text-xs font-black text-red-600">🚨 URGENT</span>' : ''}
+        </div>
+
+        <div>
+          <h2 class="text-xl font-black text-slate-900">${esc(booking.title)}</h2>
+          <p class="text-sm text-slate-500 mt-1">${esc(booking.description)}</p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs">
+          <div><strong class="text-slate-700">📍 Address:</strong><br>${esc(booking.address)}</div>
+          <div><strong class="text-slate-700">🗂️ Category:</strong><br>${booking.category_icon || ''} ${esc(booking.category_name || '-')}</div>
+          ${booking.scheduled_date ? `<div><strong class="text-slate-700">📅 Date:</strong><br>${booking.scheduled_date} ${booking.scheduled_time || ''}</div>` : ''}
+          ${booking.budget_min || booking.budget_max ? `<div><strong class="text-slate-700">💰 Budget:</strong><br>₹${booking.budget_min || 0} – ₹${booking.budget_max || '?'}</div>` : ''}
+          <div><strong class="text-slate-700">👤 Posted by:</strong><br>${esc(booking.customer_name || 'Anonymous')}</div>
+          ${booking.provider_name ? `<div><strong class="text-slate-700">🛠️ Assigned to:</strong><br>${esc(booking.provider_name)}</div>` : ''}
+        </div>
+
+        ${booking.image_before ? `
+          <div>
+            <div class="text-xs font-bold text-slate-600 mb-1.5">Issue Photo</div>
+            <img src="${booking.image_before}" class="rounded-xl border border-slate-200 max-h-48 w-full object-cover">
+          </div>
+        ` : ''}
+
+        ${booking.admin_notes ? `<div class="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-800"><strong>Admin Note:</strong> ${esc(booking.admin_notes)}</div>` : ''}
+
+        ${quotes.length > 0 ? `
+          <div>
+            <h4 class="font-bold text-sm text-slate-900 mb-3">Quotes Received (${quotes.length})</h4>
+            <div class="space-y-3">
+              ${quotes.map(q => `
+                <div class="border border-slate-200 rounded-xl p-3 ${q.status === 'accepted' ? 'border-emerald-300 bg-emerald-50' : ''}">
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="text-sm font-bold text-slate-900">${esc(q.provider_name)}</span>
+                    <span class="text-sm font-black text-emerald-700">₹${q.amount}</span>
+                  </div>
+                  <div class="text-xs text-slate-500 mb-1">${esc(q.message || '')}</div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-[11px] stars">${'★'.repeat(Math.round(q.avg_rating || 0))} (${q.total_reviews || 0})</span>
+                    <div class="flex gap-2">
+                      ${q.status === 'accepted' ? '<span class="text-xs font-bold text-emerald-700">✓ Accepted</span>' : ''}
+                      ${q.status === 'rejected' ? '<span class="text-xs font-bold text-red-500">✗ Rejected</span>' : ''}
+                      ${isOwner && booking.status === 'pending' && q.status === 'pending' ? `
+                        <button onclick="acceptQuote(${q.id})" class="btn-success text-[11px] px-2 py-1">Accept</button>
+                        <button onclick="rejectQuote(${q.id})" class="btn-danger text-[11px] px-2 py-1">Reject</button>
+                      ` : ''}
+                    </div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- Actions -->
+        <div class="flex flex-wrap gap-2 pt-2 border-t border-slate-100">
+          ${isProvider && booking.status === 'pending' && !quotes.some(q => q.provider_id === currentUser?.id) ? `
+            <button onclick="closeBookingDetail(); openQuoteModal(${booking.id}, '${esc(booking.title)}')" class="btn-primary text-xs px-4">Submit Quote</button>
+          ` : ''}
+          ${isAssignedProvider && booking.status === 'confirmed' ? `
+            <button onclick="updateBookingStatus(${booking.id}, 'in_progress')" class="btn-primary text-xs px-4">Mark In Progress</button>
+          ` : ''}
+          ${isAssignedProvider && booking.status === 'in_progress' ? `
+            <button onclick="updateBookingStatus(${booking.id}, 'completed')" class="bg-emerald-500 hover:bg-emerald-600 text-white text-xs px-4 py-2 rounded-lg font-bold">Mark Completed</button>
+          ` : ''}
+          ${isOwner && booking.status === 'completed' && !booking.review ? `
+            <button onclick="closeBookingDetail(); openReviewModal(${booking.id}, '${esc(booking.title)}', ${booking.provider_id})" class="bg-amber-500 hover:bg-amber-600 text-white text-xs px-4 py-2 rounded-lg font-bold">Leave Review</button>
+          ` : ''}
+          ${isOwner && booking.status === 'pending' ? `
+            <button onclick="updateBookingStatus(${booking.id}, 'cancelled')" class="btn-danger text-xs px-4">Cancel</button>
+          ` : ''}
+        </div>
+      </div>
+    `;
+    modal.classList.remove('hidden');
+    lucide.createIcons();
+  } catch (e) { showToast('Failed to load booking details', 'error'); }
+}
+
+function closeBookingDetail() { document.getElementById('booking-detail-modal').classList.add('hidden'); }
+
+// ==================== DASHBOARD ====================
+function renderDashboard() {
+  const role = currentUser.role;
+  const dashNav = document.getElementById('dash-nav');
+  const dashUserInfo = document.getElementById('dash-user-info');
+
+  dashUserInfo.innerHTML = `
+    <div class="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-2xl font-black mb-2">${currentUser.name[0]}</div>
+    <div class="font-bold text-sm text-slate-900">${esc(currentUser.name)}</div>
+    <div class="text-xs text-slate-500">${currentUser.email}</div>
+    <span class="inline-block mt-1.5 text-[11px] font-bold px-2 py-0.5 rounded-full ${role === 'admin' ? 'bg-red-100 text-red-700' : role === 'provider' ? 'bg-indigo-100 text-indigo-700' : 'bg-blue-100 text-blue-700'} capitalize">${role}</span>
+  `;
+
+  const navItems = {
+    customer: [
+      { id: 'overview', icon: 'layout-dashboard', label: 'Overview' },
+      { id: 'mybookings', icon: 'clipboard-list', label: 'My Bookings' },
+      { id: 'newbooking', icon: 'plus-circle', label: 'New Request' },
+      { id: 'profile', icon: 'user', label: 'My Profile' },
+    ],
+    provider: [
+      { id: 'overview', icon: 'layout-dashboard', label: 'Dashboard' },
+      { id: 'available-jobs', icon: 'briefcase', label: 'Available Jobs' },
+      { id: 'my-jobs', icon: 'clipboard-list', label: 'My Jobs' },
+      { id: 'earnings', icon: 'indian-rupee', label: 'Earnings' },
+      { id: 'profile', icon: 'user', label: 'My Profile' },
+    ],
+    admin: [
+      { id: 'overview', icon: 'layout-dashboard', label: 'Overview' },
+      { id: 'all-bookings', icon: 'clipboard-list', label: 'All Bookings' },
+      { id: 'users', icon: 'users', label: 'Users' },
+      { id: 'providers-mgmt', icon: 'wrench', label: 'Providers' },
+      { id: 'civic-mgmt', icon: 'landmark', label: 'Civic Issues' },
+    ],
+  };
+
+  dashNav.innerHTML = navItems[role].map(item => `
+    <div class="sidebar-link" onclick="loadDashSection('${item.id}', this)">
+      <i data-lucide="${item.icon}" class="w-4 h-4"></i> ${item.label}
+    </div>
+  `).join('');
+
+  lucide.createIcons();
+  loadDashSection('overview', dashNav.firstElementChild);
+}
+
+function loadDashSection(section, el) {
+  document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+  el?.classList.add('active');
+
+  const handlers = {
+    overview: loadDashOverview,
+    mybookings: loadMyBookings,
+    newbooking: () => openPostModal('repair'),
+    profile: loadProfileEditor,
+    'available-jobs': loadAvailableJobs,
+    'my-jobs': loadMyJobs,
+    earnings: loadEarnings,
+    'all-bookings': adminLoadBookings,
+    users: adminLoadUsers,
+    'providers-mgmt': adminLoadProviders,
+    'civic-mgmt': adminLoadCivic,
+  };
+  if (handlers[section]) handlers[section]();
+}
+
+async function loadDashOverview() {
+  const role = currentUser.role;
+  const content = document.getElementById('dash-content');
+
+  if (role === 'customer') {
+    try {
+      const bookings = await api('GET', '/api/bookings');
+      const total = bookings.length;
+      const active = bookings.filter(b => ['pending','confirmed','in_progress'].includes(b.status)).length;
+      const done = bookings.filter(b => b.status === 'completed').length;
+      content.innerHTML = `
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+          ${statCard('Total Requests', total, 'clipboard-list', 'blue')}
+          ${statCard('Active', active, 'loader', 'amber')}
+          ${statCard('Completed', done, 'check-circle-2', 'emerald')}
+        </div>
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-bold text-slate-900">Recent Bookings</h3>
+            <button onclick="loadMyBookings()" class="text-xs text-blue-600 font-semibold">View All</button>
+          </div>
+          <div class="space-y-3">${bookings.slice(0, 3).map(b => renderBookingRow(b)).join('') || '<p class="text-slate-500 text-sm py-4 text-center">No bookings yet</p>'}</div>
+        </div>
+      `;
+    } catch {}
+  }
+
+  if (role === 'provider') {
+    try {
+      const jobs = await api('GET', '/api/bookings');
+      const done = jobs.filter(b => b.status === 'completed').length;
+      const revenue = jobs.filter(b => b.final_price).reduce((s, b) => s + b.final_price, 0);
+      const profile = await api('GET', '/api/auth/me');
+      content.innerHTML = `
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+          ${statCard('Total Jobs', profile.profile?.total_jobs || 0, 'briefcase', 'blue')}
+          ${statCard('Active Jobs', jobs.filter(b => b.status === 'in_progress').length, 'loader', 'amber')}
+          ${statCard('Completed', done, 'check-circle-2', 'emerald')}
+          ${statCard('Avg Rating', (profile.profile?.avg_rating || 0).toFixed(1) + '★', 'star', 'yellow')}
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div class="bg-white rounded-2xl border border-slate-200 p-4">
+            <h3 class="font-bold text-slate-900 mb-3">Recent Jobs</h3>
+            <div class="space-y-2">${jobs.slice(0,3).map(b => renderBookingRow(b)).join('') || '<p class="text-slate-400 text-xs text-center py-3">No jobs assigned yet</p>'}</div>
+          </div>
+          <div class="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl p-5 text-center">
+            <div class="text-sm font-bold text-emerald-700 mb-1">Total Earnings</div>
+            <div class="text-3xl font-black text-emerald-800">₹${revenue.toLocaleString()}</div>
+            <div class="text-xs text-emerald-600 mt-1">From completed jobs</div>
+          </div>
+        </div>
+      `;
+    } catch {}
+  }
+
+  if (role === 'admin') {
+    try {
+      const stats = await api('GET', '/api/admin/stats');
+      content.innerHTML = `
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+          ${statCard('Total Users', stats.totalUsers, 'users', 'blue')}
+          ${statCard('Customers', stats.customers, 'user', 'indigo')}
+          ${statCard('Providers', stats.providers, 'wrench', 'amber')}
+          ${statCard('Total Bookings', stats.totalBookings, 'clipboard-list', 'emerald')}
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+          ${statCard('Pending Cases', stats.pendingBookings, 'clock', 'amber')}
+          ${statCard('Completed', stats.completedBookings, 'check-circle-2', 'emerald')}
+          ${statCard('Revenue Tracked', '₹' + (stats.totalRevenue||0).toLocaleString(), 'indian-rupee', 'green')}
+          ${statCard('Unverified Providers', stats.unverifiedProviders, 'alert-circle', 'red')}
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <button onclick="adminLoadBookings()" class="bg-white border border-slate-200 rounded-2xl p-4 text-left hover:border-blue-300 transition">
+            <i data-lucide="clipboard-list" class="w-6 h-6 text-blue-600 mb-2"></i>
+            <div class="font-bold text-slate-900">Manage Bookings</div>
+            <div class="text-xs text-slate-500">${stats.pendingBookings} pending cases need review</div>
+          </button>
+          <button onclick="adminLoadProviders()" class="bg-white border border-slate-200 rounded-2xl p-4 text-left hover:border-amber-300 transition">
+            <i data-lucide="shield-check" class="w-6 h-6 text-amber-600 mb-2"></i>
+            <div class="font-bold text-slate-900">Verify Providers</div>
+            <div class="text-xs text-slate-500">${stats.unverifiedProviders} providers awaiting verification</div>
+          </button>
+        </div>
+      `;
+    } catch {}
+  }
+
+  lucide.createIcons();
+}
+
+function statCard(label, value, icon, color) {
+  const colors = { blue:'bg-blue-50 text-blue-600', amber:'bg-amber-50 text-amber-600', emerald:'bg-emerald-50 text-emerald-600', indigo:'bg-indigo-50 text-indigo-600', yellow:'bg-yellow-50 text-yellow-600', red:'bg-red-50 text-red-600', green:'bg-emerald-50 text-emerald-700' };
+  return `
+    <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
+      <div class="w-10 h-10 rounded-xl ${colors[color]} flex items-center justify-center mb-3">
+        <i data-lucide="${icon}" class="w-5 h-5"></i>
+      </div>
+      <div class="text-2xl font-black text-slate-900">${value}</div>
+      <div class="text-xs text-slate-500 mt-0.5">${label}</div>
+    </div>
+  `;
+}
+
+function renderBookingRow(b) {
+  const statusColors = { pending:'badge-pending', confirmed:'badge-confirmed', in_progress:'badge-in_progress', completed:'badge-completed', cancelled:'badge-cancelled' };
+  return `
+    <div class="flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:border-blue-200 cursor-pointer transition" onclick="openBookingDetail(${b.id})">
+      <div class="flex items-center gap-3">
+        <div class="text-xl">${b.category_icon || '📋'}</div>
+        <div>
+          <div class="text-xs font-bold text-slate-900 line-clamp-1">${esc(b.title)}</div>
+          <div class="text-[11px] text-slate-400">${b.address}</div>
+        </div>
+      </div>
+      <span class="text-[11px] font-bold px-2 py-0.5 rounded-full ${statusColors[b.status] || 'bg-slate-100'}">${b.status.replace('_',' ')}</span>
+    </div>
+  `;
+}
+
+async function loadMyBookings() {
+  try {
+    const bookings = await api('GET', '/api/bookings');
+    document.getElementById('dash-content').innerHTML = `
+      <div class="flex items-center justify-between mb-5">
+        <h2 class="text-xl font-black text-slate-900">My Bookings</h2>
+        <button onclick="openPostModal('repair')" class="btn-primary text-xs px-4 flex items-center gap-1.5">
+          <i data-lucide="plus" class="w-4 h-4"></i> New Request
+        </button>
+      </div>
+      <div class="space-y-3">
+        ${bookings.length ? bookings.map(b => renderJobCard(b, 'mybookings')).join('') : '<div class="text-center py-12 bg-white rounded-2xl border border-dashed border-slate-300"><p class="text-slate-500 font-medium">No bookings yet</p><button onclick="openPostModal(\'repair\')" class="btn-primary text-xs mt-3 px-5">Post your first request</button></div>'}
+      </div>
+    `;
+    lucide.createIcons();
+  } catch {}
+}
+
+async function loadAvailableJobs() {
+  try {
+    const params = new URLSearchParams({ type: 'repair' });
+    if (geoLocated) { params.append('lat', userCoords.lat); params.append('lon', userCoords.lon); }
+    const jobs = await api('GET', `/api/jobs/public?${params}`);
+    document.getElementById('dash-content').innerHTML = `
+      <h2 class="text-xl font-black text-slate-900 mb-5">Available Jobs Near You</h2>
+      <div class="space-y-3">
+        ${jobs.filter(j => !j.provider_id && j.status === 'pending').map(j => renderJobCard(j, 'provider')).join('') || '<div class="text-center py-12 text-slate-500">No jobs available right now</div>'}
+      </div>
+    `;
+    lucide.createIcons();
+  } catch {}
+}
+
+async function loadMyJobs() {
+  try {
+    const jobs = await api('GET', '/api/bookings');
+    document.getElementById('dash-content').innerHTML = `
+      <h2 class="text-xl font-black text-slate-900 mb-5">My Assigned Jobs</h2>
+      <div class="space-y-3">
+        ${jobs.length ? jobs.map(j => renderJobCard(j, 'myjobs')).join('') : '<div class="text-center py-12 text-slate-500">No assigned jobs yet. Submit quotes to available jobs!</div>'}
+      </div>
+    `;
+    lucide.createIcons();
+  } catch {}
+}
+
+async function loadEarnings() {
+  try {
+    const jobs = await api('GET', '/api/bookings');
+    const completed = jobs.filter(b => b.status === 'completed');
+    const total = completed.reduce((s, b) => s + (b.final_price || 0), 0);
+    document.getElementById('dash-content').innerHTML = `
+      <h2 class="text-xl font-black text-slate-900 mb-5">Earnings Summary</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        ${statCard('Total Earned', '₹' + total.toLocaleString(), 'indian-rupee', 'emerald')}
+        ${statCard('Jobs Done', completed.length, 'check-circle-2', 'blue')}
+        ${statCard('Avg Per Job', completed.length ? '₹' + Math.round(total / completed.length) : '₹0', 'trending-up', 'amber')}
+      </div>
+      <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+        <div class="px-5 py-3 border-b border-slate-100 font-bold text-sm text-slate-900">Completed Jobs</div>
+        <div class="divide-y divide-slate-100">
+          ${completed.map(b => `
+            <div class="px-5 py-3 flex items-center justify-between text-sm">
+              <div>
+                <div class="font-semibold text-slate-900">${esc(b.title)}</div>
+                <div class="text-xs text-slate-400">${b.updated_at?.slice(0,10) || '-'}</div>
+              </div>
+              <span class="font-black text-emerald-700">${b.final_price ? '₹' + b.final_price : '-'}</span>
+            </div>
+          `).join('') || '<div class="px-5 py-6 text-center text-slate-400 text-sm">No earnings yet</div>'}
+        </div>
+      </div>
+    `;
+    lucide.createIcons();
+  } catch {}
+}
+
+async function loadProfileEditor() {
+  const user = await api('GET', '/api/auth/me');
+  document.getElementById('dash-content').innerHTML = `
+    <h2 class="text-xl font-black text-slate-900 mb-5">My Profile</h2>
+    <div class="bg-white rounded-2xl border border-slate-200 p-6">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1.5">Full Name</label>
+          <input value="${esc(user.name)}" class="input-cls" disabled>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1.5">Email</label>
+          <input value="${esc(user.email)}" class="input-cls" disabled>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1.5">Phone</label>
+          <input value="${esc(user.phone || '')}" class="input-cls" disabled>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1.5">City</label>
+          <input value="${esc(user.city || '')}" class="input-cls" disabled>
+        </div>
+      </div>
+      ${user.role === 'provider' && user.profile ? `
+        <div class="border-t border-slate-100 pt-5">
+          <h3 class="font-bold text-slate-900 mb-4">Provider Profile</h3>
+          <form onsubmit="saveProviderProfile(event)" class="space-y-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1.5">Business Name</label>
+              <input id="profile-biz" class="input-cls" value="${esc(user.profile.business_name || '')}">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1.5">Bio / About</label>
+              <textarea id="profile-bio" class="input-cls" rows="3">${esc(user.profile.bio || '')}</textarea>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1.5">Hourly Rate (₹)</label>
+                <input id="profile-rate" type="number" class="input-cls" value="${user.profile.hourly_rate || ''}">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1.5">Years of Experience</label>
+                <input id="profile-exp" type="number" class="input-cls" value="${user.profile.experience_years || ''}">
+              </div>
+            </div>
+            <div>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="profile-available" ${user.profile.is_available ? 'checked' : ''} class="rounded">
+                <span class="text-sm font-semibold text-slate-700">Available for new jobs</span>
+              </label>
+            </div>
+            <button type="submit" class="btn-primary">Save Profile</button>
+          </form>
+        </div>
+      ` : ''}
+    </div>
+  `;
+  lucide.createIcons();
+}
+
+async function saveProviderProfile(e) {
+  e.preventDefault();
+  try {
+    await api('PATCH', '/api/provider/profile', {
+      business_name: document.getElementById('profile-biz').value,
+      bio: document.getElementById('profile-bio').value,
+      hourly_rate: parseFloat(document.getElementById('profile-rate').value),
+      experience_years: parseInt(document.getElementById('profile-exp').value),
+      is_available: document.getElementById('profile-available').checked
+    });
+    showToast('Profile updated!', 'success');
+  } catch (e) { showToast(e.error || 'Update failed', 'error'); }
+}
+
+// ==================== ADMIN ====================
+async function adminLoadBookings() {
+  try {
+    const bookings = await api('GET', '/api/admin/bookings');
+    document.getElementById('dash-content').innerHTML = `
+      <h2 class="text-xl font-black text-slate-900 mb-5">All Bookings</h2>
+      <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs">
+            <thead class="bg-slate-50 border-b border-slate-200">
+              <tr class="text-[11px] font-bold text-slate-500 uppercase">
+                <th class="px-4 py-3 text-left">ID</th>
+                <th class="px-4 py-3 text-left">Title</th>
+                <th class="px-4 py-3 text-left">Type</th>
+                <th class="px-4 py-3 text-left">Customer</th>
+                <th class="px-4 py-3 text-left">Status</th>
+                <th class="px-4 py-3 text-left">Priority</th>
+                <th class="px-4 py-3 text-left">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              ${bookings.map(b => `
+                <tr class="hover:bg-slate-50 transition">
+                  <td class="px-4 py-3 font-mono font-bold text-slate-500">#${b.id}</td>
+                  <td class="px-4 py-3">
+                    <div class="font-bold text-slate-900 max-w-[180px] truncate">${esc(b.title)}</div>
+                    <div class="text-[10px] text-slate-400 truncate">${esc(b.address)}</div>
+                  </td>
+                  <td class="px-4 py-3"><span class="badge-${b.type} px-2 py-0.5 rounded-full font-semibold">${b.type}</span></td>
+                  <td class="px-4 py-3 text-slate-600">${esc(b.customer_name || '-')}</td>
+                  <td class="px-4 py-3">
+                    <select onchange="adminUpdateBooking(${b.id}, {status:this.value})" class="text-[11px] border border-slate-200 rounded-lg p-1 bg-white font-semibold">
+                      ${['pending','confirmed','in_progress','completed','cancelled','disputed'].map(s => `<option value="${s}" ${b.status===s?'selected':''}>${s.replace('_',' ')}</option>`).join('')}
+                    </select>
+                  </td>
+                  <td class="px-4 py-3">
+                    <select onchange="adminUpdateBooking(${b.id}, {priority:this.value})" class="text-[11px] border border-slate-200 rounded-lg p-1 bg-white">
+                      ${['low','normal','high','urgent'].map(p => `<option value="${p}" ${b.priority===p?'selected':''}>${p}</option>`).join('')}
+                    </select>
+                  </td>
+                  <td class="px-4 py-3">
+                    <button onclick="openAdminNoteModal(${b.id},'${esc(b.admin_notes||'')}')" class="text-blue-600 hover:underline font-semibold">Note</button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    lucide.createIcons();
+  } catch {}
+}
+
+async function adminUpdateBooking(id, payload) {
+  try {
+    await api('PATCH', `/api/admin/bookings/${id}`, payload);
+    showToast('Updated!', 'success');
+  } catch { showToast('Update failed', 'error'); }
+}
+
+function openAdminNoteModal(id, currentNote) {
+  const note = prompt('Admin note for this booking:', currentNote);
+  if (note !== null) adminUpdateBooking(id, { admin_notes: note });
+}
+
+async function adminLoadUsers() {
+  try {
+    const users = await api('GET', '/api/admin/users');
+    document.getElementById('dash-content').innerHTML = `
+      <h2 class="text-xl font-black text-slate-900 mb-5">All Users</h2>
+      <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs">
+            <thead class="bg-slate-50 border-b border-slate-200">
+              <tr class="text-[11px] font-bold text-slate-500 uppercase">
+                <th class="px-4 py-3 text-left">User</th>
+                <th class="px-4 py-3 text-left">Role</th>
+                <th class="px-4 py-3 text-left">City</th>
+                <th class="px-4 py-3 text-left">Status</th>
+                <th class="px-4 py-3 text-left">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              ${users.map(u => `
+                <tr class="hover:bg-slate-50">
+                  <td class="px-4 py-3">
+                    <div class="font-bold text-slate-900">${esc(u.name)}</div>
+                    <div class="text-[10px] text-slate-400">${esc(u.email)}</div>
+                  </td>
+                  <td class="px-4 py-3"><span class="text-[11px] font-bold px-2 py-0.5 rounded-full ${u.role==='provider'?'bg-indigo-100 text-indigo-700':'bg-blue-100 text-blue-700'} capitalize">${u.role}</span></td>
+                  <td class="px-4 py-3 text-slate-600">${esc(u.city || '-')}</td>
+                  <td class="px-4 py-3"><span class="text-[11px] font-bold px-2 py-0.5 rounded-full ${u.is_active?'bg-emerald-100 text-emerald-700':'bg-red-100 text-red-700'}">${u.is_active?'Active':'Suspended'}</span></td>
+                  <td class="px-4 py-3">
+                    <button onclick="adminToggleUser(${u.id}, ${u.is_active})" class="${u.is_active?'btn-danger':'btn-success'} text-[11px] px-2 py-1">${u.is_active?'Suspend':'Activate'}</button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    lucide.createIcons();
+  } catch {}
+}
+
+async function adminToggleUser(id, isActive) {
+  try {
+    await api('PATCH', `/api/admin/users/${id}`, { is_active: !isActive });
+    showToast(isActive ? 'User suspended' : 'User activated', 'success');
+    adminLoadUsers();
+  } catch { showToast('Failed', 'error'); }
+}
+
+async function adminLoadProviders() {
+  try {
+    const users = await api('GET', '/api/admin/users?role=provider');
+    document.getElementById('dash-content').innerHTML = `
+      <h2 class="text-xl font-black text-slate-900 mb-5">Service Provider Management</h2>
+      <div class="space-y-3">
+        ${users.map(u => `
+          <div class="bg-white rounded-2xl border border-slate-200 p-4 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white font-black">${u.name[0]}</div>
+              <div>
+                <div class="font-bold text-sm text-slate-900">${esc(u.name)}</div>
+                <div class="text-xs text-slate-500">${esc(u.email)} • ${esc(u.city || 'N/A')}</div>
+                <div class="flex items-center gap-2 mt-0.5">
+                  <span class="text-xs stars">${'★'.repeat(Math.round(u.avg_rating || 0))}</span>
+                  <span class="text-xs text-slate-400">${u.total_jobs || 0} jobs</span>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-[11px] font-bold px-2 py-0.5 rounded-full ${u.provider_verified?'bg-emerald-100 text-emerald-700':'bg-amber-100 text-amber-700'}">${u.provider_verified?'✓ Verified':'Pending Verify'}</span>
+              ${!u.provider_verified ? `<button onclick="adminVerifyProvider(${u.id})" class="btn-success text-[11px] px-3 py-1">Verify</button>` : ''}
+              <button onclick="adminToggleUser(${u.id}, ${u.is_active})" class="${u.is_active?'btn-danger':'btn-success'} text-[11px] px-2 py-1">${u.is_active?'Suspend':'Activate'}</button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+    lucide.createIcons();
+  } catch {}
+}
+
+async function adminVerifyProvider(id) {
+  try {
+    await api('PATCH', `/api/admin/users/${id}`, { provider_verified: true });
+    showToast('Provider verified!', 'success');
+    adminLoadProviders();
+  } catch { showToast('Failed', 'error'); }
+}
+
+async function adminLoadCivic() {
+  try {
+    const params = new URLSearchParams({ type: 'civic' });
+    const bookings = await api('GET', `/api/jobs/public?${params}`);
+    document.getElementById('dash-content').innerHTML = `
+      <h2 class="text-xl font-black text-slate-900 mb-5">Civic Issue Management</h2>
+      <div class="space-y-3">
+        ${bookings.map(b => `
+          <div class="bg-white rounded-2xl border border-slate-200 p-4">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div class="flex-1">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="text-xs font-bold px-2 py-0.5 rounded-full badge-${b.status||'pending'}">${(b.status||'pending').replace('_',' ')}</span>
+                  <span class="text-xs font-bold text-orange-600">${b.priority}</span>
+                  <span class="text-xs text-slate-400 flex items-center gap-1"><i data-lucide="thumbs-up" class="w-3 h-3"></i>${b.upvotes||0} upvotes</span>
+                </div>
+                <div class="font-bold text-slate-900">${esc(b.title)}</div>
+                <div class="text-xs text-slate-500">${esc(b.address)}</div>
+                ${b.admin_notes ? `<div class="text-xs text-blue-700 mt-1 font-medium">Note: ${esc(b.admin_notes)}</div>` : ''}
+              </div>
+              <div class="flex gap-2">
+                <select onchange="adminUpdateBooking(${b.id},{status:this.value})" class="input-cls text-xs py-1.5 w-32">
+                  ${['pending','in_progress','completed'].map(s=>`<option value="${s}" ${b.status===s?'selected':''}>${s.replace('_',' ')}</option>`).join('')}
+                </select>
+                <button onclick="openAdminNoteModal(${b.id},'${esc(b.admin_notes||'')}')" class="btn-secondary text-xs px-3">Add Note</button>
+              </div>
+            </div>
+          </div>
+        `).join('') || '<div class="text-center py-12 text-slate-500">No civic issues reported</div>'}
+      </div>
+    `;
+    lucide.createIcons();
+  } catch {}
+}
+
+// ==================== AUTH ====================
+function openAuthModal(tab, role) {
+  document.getElementById('auth-modal').classList.remove('hidden');
+  switchAuthTab(tab);
+  if (role === 'provider') {
+    document.querySelector('input[name="reg_role"][value="provider"]').checked = true;
+    highlightRole();
+  }
+}
+
+function closeAuthModal() { document.getElementById('auth-modal').classList.add('hidden'); document.getElementById('auth-error').classList.add('hidden'); }
+
+function switchAuthTab(tab) {
+  document.getElementById('login-form').classList.toggle('hidden', tab !== 'login');
+  document.getElementById('register-form').classList.toggle('hidden', tab !== 'register');
+  document.getElementById('auth-tab-login').className = `flex-1 py-4 text-sm font-bold text-center transition ${tab === 'login' ? 'tab-active' : 'tab-inactive'}`;
+  document.getElementById('auth-tab-register').className = `flex-1 py-4 text-sm font-bold text-center transition ${tab === 'register' ? 'tab-active' : 'tab-inactive'}`;
+  document.getElementById('auth-error').classList.add('hidden');
+}
+
+function highlightRole() {
+  const val = document.querySelector('input[name="reg_role"]:checked')?.value;
+  document.getElementById('role-label-customer').className = `border-2 p-3 rounded-xl cursor-pointer text-center transition ${val === 'customer' ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300'}`;
+  document.getElementById('role-label-provider').className = `border-2 p-3 rounded-xl cursor-pointer text-center transition ${val === 'provider' ? 'border-indigo-500 bg-indigo-50' : 'border-slate-200 hover:border-slate-300'}`;
+}
+
+async function doLogin(e) {
+  e.preventDefault();
+  const btn = document.getElementById('login-btn');
+  btn.disabled = true; btn.textContent = 'Signing in...';
+  try {
+    const res = await api('POST', '/api/auth/login', { email: document.getElementById('login-email').value, password: document.getElementById('login-password').value });
+    token = res.token;
+    localStorage.setItem('fixnear_token', token);
+    currentUser = res.user;
+    updateNavForUser(res.user);
+    closeAuthModal();
+    loadNotifications();
+    showToast(`Welcome back, ${res.user.name.split(' ')[0]}!`, 'success');
+    if (res.user.role !== 'customer') showPage('dashboard');
+  } catch (err) {
+    const errEl = document.getElementById('auth-error');
+    errEl.textContent = err.error || 'Login failed';
+    errEl.classList.remove('hidden');
+  } finally { btn.disabled = false; btn.textContent = 'Sign In to FixNear'; }
+}
+
+async function doRegister(e) {
+  e.preventDefault();
+  const btn = document.getElementById('reg-btn');
+  btn.disabled = true; btn.textContent = 'Creating account...';
+  try {
+    const res = await api('POST', '/api/auth/register', {
+      name: document.getElementById('reg-name').value,
+      email: document.getElementById('reg-email').value,
+      phone: document.getElementById('reg-phone').value,
+      password: document.getElementById('reg-password').value,
+      role: document.querySelector('input[name="reg_role"]:checked').value,
+      city: document.getElementById('reg-city').value,
+    });
+    token = res.token;
+    localStorage.setItem('fixnear_token', token);
+    currentUser = res.user;
+    updateNavForUser(res.user);
+    closeAuthModal();
+    showToast(`Welcome to FixNear, ${res.user.name.split(' ')[0]}!`, 'success');
+    showPage('dashboard');
+  } catch (err) {
+    const errEl = document.getElementById('auth-error');
+    errEl.textContent = err.error || 'Registration failed';
+    errEl.classList.remove('hidden');
+  } finally { btn.disabled = false; btn.textContent = 'Create Account'; }
+}
+
+async function logout() {
+  try { await api('POST', '/api/auth/logout'); } catch {}
+  token = null; currentUser = null;
+  localStorage.removeItem('fixnear_token');
+  document.getElementById('user-menu').classList.add('hidden');
+  document.getElementById('notif-bell').classList.add('hidden');
+  document.getElementById('auth-btns').classList.remove('hidden');
+  document.getElementById('guest-nav').classList.remove('hidden');
+  showPage('home');
+  showToast('Signed out successfully', 'info');
+}
+
+function toggleUserMenu() { document.getElementById('user-dropdown').classList.toggle('hidden'); }
+function closeUserMenu() { document.getElementById('user-dropdown').classList.add('hidden'); }
+
+// ==================== POST BOOKING ====================
+function openPostModal(type) {
+  if (!currentUser) { openAuthModal('login'); return; }
+  if (currentUser.role !== 'customer') { showToast('Only customers can post requests', 'error'); return; }
+  document.getElementById('post-type').value = type;
+  document.getElementById('post-modal-title').textContent = type === 'civic' ? 'Report a Civic Issue' : 'Post a Repair Request';
+  document.getElementById('repair-only-fields').style.display = type === 'civic' ? 'none' : 'block';
+  document.getElementById('post-modal').classList.remove('hidden');
+  lucide.createIcons();
+}
+function closePostModal() { document.getElementById('post-modal').classList.add('hidden'); document.getElementById('post-booking-form').reset(); }
+
+async function submitBooking(e) {
+  e.preventDefault();
+  const btn = document.getElementById('pb-submit');
+  btn.disabled = true; btn.textContent = 'Posting...';
+
+  const formData = new FormData();
+  formData.append('title', document.getElementById('pb-title').value);
+  formData.append('description', document.getElementById('pb-description').value);
+  formData.append('address', document.getElementById('pb-address').value);
+  formData.append('type', document.getElementById('post-type').value);
+  formData.append('category_id', document.getElementById('pb-category').value);
+  formData.append('priority', document.getElementById('pb-priority').value);
+  formData.append('scheduled_date', document.getElementById('pb-date').value);
+  formData.append('scheduled_time', document.getElementById('pb-time').value);
+  formData.append('budget_min', document.getElementById('pb-budget-min').value);
+  formData.append('budget_max', document.getElementById('pb-budget-max').value);
+  formData.append('latitude', userCoords.lat);
+  formData.append('longitude', userCoords.lon);
+  const photo = document.getElementById('pb-photo').files[0];
+  if (photo) formData.append('photo', photo);
+
+  try {
+    await apiFormData('/api/bookings', formData);
+    closePostModal();
+    showToast('Request posted! Nearby providers will be notified.', 'success');
+    loadMyBookings();
+  } catch (err) { showToast(err.error || 'Failed to post', 'error'); }
+  finally { btn.disabled = false; btn.textContent = 'Post Request'; }
+}
+
+// ==================== QUOTES ====================
+function openQuoteModal(bookingId, title) {
+  document.getElementById('quote-booking-id').value = bookingId;
+  document.getElementById('quote-job-preview').textContent = `Job: ${title}`;
+  document.getElementById('quote-modal').classList.remove('hidden');
+}
+function closeQuoteModal() { document.getElementById('quote-modal').classList.add('hidden'); document.getElementById('quote-form').reset(); }
+
+async function submitQuote(e) {
+  e.preventDefault();
+  const id = document.getElementById('quote-booking-id').value;
+  try {
+    await api('POST', `/api/bookings/${id}/quotes`, {
+      amount: parseFloat(document.getElementById('quote-amount').value),
+      message: document.getElementById('quote-message').value,
+      eta_days: parseInt(document.getElementById('quote-eta').value)
+    });
+    closeQuoteModal();
+    showToast('Quote submitted successfully!', 'success');
+  } catch (err) { showToast(err.error || 'Failed to submit quote', 'error'); }
+}
+
+async function acceptQuote(quoteId) {
+  try {
+    await api('PATCH', `/api/quotes/${quoteId}`, { status: 'accepted' });
+    showToast('Quote accepted! Provider confirmed.', 'success');
+    closeBookingDetail();
+    loadMyBookings();
+  } catch { showToast('Failed', 'error'); }
+}
+
+async function rejectQuote(quoteId) {
+  try {
+    await api('PATCH', `/api/quotes/${quoteId}`, { status: 'rejected' });
+    showToast('Quote rejected', 'info');
+    closeBookingDetail();
+  } catch { showToast('Failed', 'error'); }
+}
+
+// ==================== REVIEWS ====================
+let currentRating = 0;
+function openReviewModal(bookingId, title, providerId) {
+  document.getElementById('review-booking-id').value = bookingId;
+  document.getElementById('review-job-preview').textContent = `Review for: ${title}`;
+  currentRating = 0;
+  setRating(0);
+  document.getElementById('review-modal').classList.remove('hidden');
+}
+function closeReviewModal() { document.getElementById('review-modal').classList.add('hidden'); }
+
+function setRating(n) {
+  currentRating = n;
+  document.getElementById('review-rating').value = n;
+  document.querySelectorAll('.rating-star').forEach((s, i) => { s.textContent = i < n ? '★' : '☆'; });
+}
+
+async function submitReview(e) {
+  e.preventDefault();
+  const rating = parseInt(document.getElementById('review-rating').value);
+  if (!rating) { showToast('Please select a rating', 'error'); return; }
+  try {
+    await api('POST', '/api/reviews', { booking_id: parseInt(document.getElementById('review-booking-id').value), rating, comment: document.getElementById('review-comment').value });
+    closeReviewModal();
+    showToast('Review submitted! Thank you.', 'success');
+  } catch (err) { showToast(err.error || 'Failed', 'error'); }
+}
+
+// ==================== BOOKING ACTIONS ====================
+async function updateBookingStatus(id, status) {
+  try {
+    await api('PATCH', `/api/bookings/${id}`, { status });
+    showToast(`Status updated to "${status}"`, 'success');
+    closeBookingDetail();
+    if (currentUser.role === 'provider') loadMyJobs();
+    else loadMyBookings();
+  } catch { showToast('Update failed', 'error'); }
+}
+
+async function upvoteBooking(id) {
+  if (!currentUser) { openAuthModal('login'); return; }
+  try {
+    const res = await api('POST', `/api/bookings/${id}/upvote`);
+    const el = document.getElementById(`upvotes-${id}`);
+    if (el) el.textContent = res.upvotes;
+  } catch {}
+}
+
+// ==================== NOTIFICATIONS ====================
+async function loadNotifications() {
+  try {
+    const notifs = await api('GET', '/api/notifications');
+    const unread = notifs.filter(n => !n.is_read).length;
+    document.getElementById('notif-count-dot').classList.toggle('hidden', unread === 0);
+    document.getElementById('notif-list').innerHTML = notifs.map(n => `
+      <div class="px-4 py-3 ${n.is_read ? '' : 'bg-blue-50/50'}">
+        <div class="text-xs font-bold text-slate-900">${esc(n.title)}</div>
+        <div class="text-[11px] text-slate-500 mt-0.5">${esc(n.message)}</div>
+      </div>
+    `).join('') || '<div class="px-4 py-6 text-center text-xs text-slate-400">No notifications</div>';
+  } catch {}
+}
+
+function toggleNotifPanel() {
+  const panel = document.getElementById('notif-panel');
+  panel.classList.toggle('hidden');
+  loadNotifications();
+}
+
+async function markAllRead() {
+  try {
+    await api('PATCH', '/api/notifications/read-all');
+    document.getElementById('notif-count-dot').classList.add('hidden');
+    loadNotifications();
+  } catch {}
+}
+
+// ==================== TOAST ====================
+function showToast(msg, type = 'info') {
+  const toast = document.getElementById('toast');
+  const body = document.getElementById('toast-body');
+  const colors = { success: 'bg-emerald-600', error: 'bg-red-600', info: 'bg-blue-600', warning: 'bg-amber-600' };
+  const icons = { success: '✓', error: '✕', info: 'ℹ', warning: '⚠' };
+  body.className = `flex items-center gap-3 px-5 py-3 rounded-2xl shadow-xl text-sm font-semibold text-white min-w-[220px] ${colors[type]}`;
+  body.innerHTML = `<span class="text-lg">${icons[type]}</span> ${esc(msg)}`;
+  toast.classList.remove('hidden');
+  setTimeout(() => toast.classList.add('hidden'), 3500);
+}
+
+// ==================== UTILS ====================
+function esc(text) {
+  if (!text && text !== 0) return '';
+  return String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+}
+
+function debounce(fn, ms) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
+// ==================== BOOTSTRAP ====================
+window.onload = init;
+</script>
+</body>
+</html>

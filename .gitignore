@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+
+# Local databases & uploads
+db/*.sqlite
+db/*.sqlite-journal
+uploads/*
+!uploads/.gitkeep
+
+# Environment & secrets
+.env
+.env.local
+
+# Operating System files
+.DS_Store
+Thumbs.db
