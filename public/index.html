@@ -246,14 +246,21 @@
 
     <!-- Top Providers Preview -->
     <section class="max-w-7xl mx-auto px-4 sm:px-6 py-14">
-      <div class="flex items-center justify-between mb-8">
+      <div class="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-4">
         <div>
-          <h2 class="text-2xl font-black text-slate-900">Top Rated Providers</h2>
-          <p class="text-slate-500 text-sm mt-0.5">Verified, background-checked professionals near you</p>
+          <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 mb-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            Verified Local Workers Available Right Now
+          </div>
+          <h2 class="text-2xl sm:text-3xl font-black text-slate-900">Available Workers & Service Rates</h2>
+          <p class="text-slate-500 text-sm mt-1">Directly view worker availability status, transparent hourly rates, and hire instantly.</p>
         </div>
-        <button onclick="showPage('providers')" class="btn-secondary text-xs px-4 py-2">View All</button>
+        <button onclick="showPage('providers')" class="btn-secondary text-xs px-5 py-2.5 font-bold self-start sm:self-auto flex items-center gap-1.5">
+          <span>View All 150+ Workers</span>
+          <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+        </button>
       </div>
-      <div id="home-providers" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5"></div>
+      <div id="home-providers" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
     </section>
 
     <!-- CTA Banner -->
@@ -327,14 +334,18 @@
 
   <!-- PAGE: PROVIDERS -->
   <div id="page-providers" class="page-section hidden max-w-7xl mx-auto px-4 sm:px-6 py-8">
-    <div class="flex items-center justify-between mb-6">
+    <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
       <div>
-        <h1 class="text-2xl font-black text-slate-900">Find Service Providers</h1>
-        <p class="text-slate-500 text-sm mt-0.5">Verified professionals ready to help near you</p>
+        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 mb-2">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          Live Technician Directory
+        </div>
+        <h1 class="text-2xl sm:text-3xl font-black text-slate-900">Available Workers & Service Rates</h1>
+        <p class="text-slate-500 text-sm mt-0.5">Browse verified handymen, plumbers, electricians, AC technicians, and cleaners ready for work.</p>
       </div>
-      <div class="flex items-center gap-3">
-        <input type="text" id="provider-search" oninput="debounce(fetchProviders, 400)()" placeholder="Search skill or name..." class="input-cls text-xs py-2 w-48">
-        <select id="provider-radius" onchange="fetchProviders()" class="input-cls text-xs py-2 w-36">
+      <div class="flex flex-wrap items-center gap-3">
+        <input type="text" id="provider-search" oninput="debounce(fetchProviders, 300)()" placeholder="Search plumber, electrician, AC..." class="input-cls text-xs py-2.5 w-60 bg-white">
+        <select id="provider-radius" onchange="fetchProviders()" class="input-cls text-xs py-2.5 w-40 bg-white font-medium">
           <option value="">Any Distance</option>
           <option value="5">Within 5 km</option>
           <option value="10">Within 10 km</option>
@@ -342,8 +353,12 @@
         </select>
       </div>
     </div>
-    <div id="providers-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
-    <div id="providers-empty" class="hidden text-center py-16"><p class="text-slate-500">No providers found</p></div>
+    <div id="providers-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+    <div id="providers-empty" class="hidden text-center py-16 bg-white rounded-2xl border border-dashed border-slate-300">
+      <i data-lucide="user-x" class="w-12 h-12 mx-auto text-slate-300 mb-2"></i>
+      <p class="text-slate-600 font-bold">No workers found matching your search</p>
+      <p class="text-xs text-slate-400 mt-1">Try clearing your filters or changing search keywords</p>
+    </div>
   </div>
 
   <!-- PAGE: CIVIC -->
@@ -971,30 +986,79 @@ function renderProviderCard(p, big = false) {
   let skillsArr = [];
   try { skillsArr = JSON.parse(p.skills || '[]'); } catch {}
 
+  const rateDisplay = p.hourly_rate ? `₹${p.hourly_rate}/${p.rate_unit || 'hr'}` : 'Quote-based';
+  const availText = p.availability_status || (p.is_available ? '🟢 Available for work' : '⚪ Busy / Offline');
+  const tradeTitle = p.trade || (skillsArr[0] ? skillsArr[0] + ' Specialist' : 'Verified Technician');
+
   return `
-    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm card-hover p-5 provider-card">
-      <div class="flex items-start gap-3 mb-3">
-        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-black text-lg shrink-0">
-          ${(p.business_name || p.name)[0]}
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg transition-all duration-200 p-5 flex flex-col justify-between">
+      <div>
+        <!-- Availability & Badge Header -->
+        <div class="flex items-center justify-between gap-2 mb-3">
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${p.is_available ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-500'}">
+            <span class="w-2 h-2 rounded-full ${p.is_available ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}"></span>
+            ${availText}
+          </span>
+          ${p.badge ? `<span class="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200">${p.badge}</span>` : ''}
         </div>
-        <div class="flex-1 min-w-0">
-          <div class="flex items-center gap-1.5">
-            <span class="font-bold text-sm text-slate-900 truncate">${esc(p.business_name || p.name)}</span>
-            ${p.is_verified ? '<span title="Verified" class="text-emerald-600 shrink-0">✓</span>' : ''}
+
+        <!-- Worker Identity & Photo -->
+        <div class="flex items-start gap-3.5 mb-3">
+          <div class="w-13 h-13 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-indigo-800 flex items-center justify-center text-white font-black text-xl shadow-md shadow-blue-500/20 shrink-0 p-3">
+            ${(p.business_name || p.name)[0]}
           </div>
-          <div class="text-xs text-slate-500">${p.experience_years || 0}+ yrs exp</div>
-          <div class="text-xs mt-0.5"><span class="stars">${starStr}</span> <span class="text-slate-500">(${p.total_reviews || 0})</span></div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-1.5">
+              <h3 class="font-extrabold text-base text-slate-900 truncate leading-snug">${esc(p.business_name || p.name)}</h3>
+              ${p.is_verified ? '<span title="Government / Background Verified" class="text-white bg-blue-600 rounded-full w-4 h-4 inline-flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>' : ''}
+            </div>
+            <div class="text-xs font-semibold text-blue-700">${esc(tradeTitle)}</div>
+            <div class="flex items-center gap-2 mt-1 text-xs">
+              <span class="text-amber-500 font-black flex items-center gap-0.5">${starStr} <span class="text-slate-700 font-bold ml-1">${(p.avg_rating || 5.0).toFixed(1)}</span></span>
+              <span class="text-slate-400">•</span>
+              <span class="text-slate-500 font-medium">${p.total_jobs || 100}+ jobs done</span>
+            </div>
+          </div>
         </div>
-        ${p.distance_km !== undefined ? `<span class="text-[11px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg shrink-0">${p.distance_km} km</span>` : ''}
+
+        <!-- Bio & Location -->
+        <p class="text-xs text-slate-600 line-clamp-2 mb-3 leading-relaxed">${esc(p.bio || '')}</p>
+
+        <div class="space-y-1.5 mb-3 text-xs text-slate-600">
+          <div class="flex items-center gap-1.5">
+            <i data-lucide="map-pin" class="w-3.5 h-3.5 text-slate-400 shrink-0"></i>
+            <span class="truncate font-medium">${esc(p.location || p.city || 'Local Area')}</span>
+            ${p.distance_km !== undefined ? `<span class="text-blue-600 font-bold ml-auto text-[11px] bg-blue-50 px-1.5 py-0.5 rounded">${p.distance_km} km</span>` : ''}
+          </div>
+          <div class="flex items-center gap-1.5">
+            <i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-500 shrink-0"></i>
+            <span class="text-[11px] text-emerald-700 font-semibold">${p.warranty || 'Verified Work Guarantee'}</span>
+          </div>
+        </div>
+
+        <!-- Skills Tags -->
+        <div class="flex flex-wrap gap-1 mb-4">
+          ${skillsArr.map(s => `<span class="text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-lg">${esc(s)}</span>`).join('')}
+        </div>
       </div>
-      <p class="text-xs text-slate-500 line-clamp-2 mb-3">${esc(p.bio || '')}</p>
-      <div class="flex flex-wrap gap-1 mb-3">
-        ${skillsArr.slice(0, 3).map(s => `<span class="text-[10px] font-semibold bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full border border-blue-100">${esc(s)}</span>`).join('')}
-      </div>
-      <div class="flex items-center justify-between">
-        <span class="text-xs font-bold text-slate-900">${p.hourly_rate ? `₹${p.hourly_rate}/hr` : 'Quote-based'}</span>
-        <div class="flex gap-2 provider-actions">
-          <button onclick="requireLoginThen(() => openPostModal('repair'))" class="btn-primary text-xs px-3 py-1.5">Book Now</button>
+
+      <!-- Rate & Direct Booking Actions -->
+      <div class="border-t border-slate-100 pt-3.5 mt-2 flex items-center justify-between gap-2">
+        <div>
+          <span class="text-[10px] uppercase tracking-wider font-extrabold text-slate-400 block -mb-0.5">Service Rate</span>
+          <div class="text-lg font-black text-slate-900">${rateDisplay}</div>
+          ${p.callout_fee ? `<span class="text-[10px] text-slate-400 font-medium">Visiting: ₹${p.callout_fee}</span>` : ''}
+        </div>
+        <div class="flex items-center gap-2">
+          ${p.phone ? `
+            <a href="tel:${p.phone.replace(/\\s+/g, '')}" class="p-2.5 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50 text-slate-700 hover:text-blue-600 transition" title="Direct Call">
+              <i data-lucide="phone-call" class="w-4 h-4"></i>
+            </a>
+          ` : ''}
+          <button onclick="requireLoginThen(() => openPostModal('repair'))" class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 transition flex items-center gap-1.5 cursor-pointer">
+            <span>Book Worker</span>
+            <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+          </button>
         </div>
       </div>
     </div>
