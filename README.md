@@ -58,3 +58,15 @@ To run or restart the server manually:
 # Using agy-node or node
 agy-node server.js
 ```
+
+
+## ?? Official Live Website
+?? **Website**: [https://mdfaizan786-aiml.github.io/FixNear/](https://mdfaizan786-aiml.github.io/FixNear/)
+
+### ??? Available On-Demand Services
+- **Plumbing & Sanitary**: Pipe bursts, taps, drainage, bathroom fitting.
+- **Electrical & Wiring**: MCB repair, short circuits, appliances.
+- **AC & Refrigeration**: Jet pump service, gas refill, cooling diagnostics.
+- **Carpentry & Handyman**: Furniture assembly, lock repair, modular kitchen.
+- **Deep Cleaning**: Home, sofa, kitchen degreasing, bathroom stains.
+- **Civic Issue Reporting**: Potholes, streetlights, garbage overflow.
