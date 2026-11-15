@@ -35,6 +35,7 @@
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="mock-data.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap');
     * { font-family: 'Plus Jakarta Sans', sans-serif; }
@@ -696,24 +697,154 @@ function updateNavForUser(user) {
   document.getElementById('dd-name').textContent = user.name;
 }
 
-// ==================== API ====================
+// ==================== API (FALLBACK TO CLIENT STATE IF BACKEND NOT AVAILABLE) ====================
 async function api(method, path, body) {
-  const opts = { method, headers: { 'Content-Type': 'application/json' } };
-  if (token) opts.headers['Authorization'] = `Bearer ${token}`;
-  if (body) opts.body = JSON.stringify(body);
-  const res = await fetch(path, opts);
-  const data = await res.json();
-  if (!res.ok) throw data;
-  return data;
+  try {
+    const opts = { method, headers: { 'Content-Type': 'application/json' } };
+    if (token) opts.headers['Authorization'] = `Bearer ${token}`;
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(path, opts);
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (err) {
+    // Backend offline / static GitHub Pages environment -> serve mock/local store
+  }
+
+  // --- Client-side fallback handlers ---
+  const urlObj = new URL(path, window.location.origin);
+  const pathname = urlObj.pathname;
+
+  // 1. Categories
+  if (pathname.endsWith('/api/categories')) {
+    const type = urlObj.searchParams.get('type');
+    if (type) return DEFAULT_CATEGORIES.filter(c => c.type === type);
+    return DEFAULT_CATEGORIES;
+  }
+
+  // 2. Providers
+  if (pathname.endsWith('/api/providers')) {
+    const skill = urlObj.searchParams.get('skill');
+    const radius = parseFloat(urlObj.searchParams.get('radius'));
+    let providers = getLocalStore('providers', DEFAULT_PROVIDERS);
+    if (skill) {
+      providers = providers.filter(p => {
+        try {
+          return JSON.parse(p.skills || '[]').some(s => s.toLowerCase().includes(skill.toLowerCase()));
+        } catch { return false; }
+      });
+    }
+    if (radius && geoLocated) {
+      providers = providers.map(p => ({
+        ...p,
+        distance_km: parseFloat(haversineDist(userCoords.lat, userCoords.lon, p.latitude, p.longitude).toFixed(1))
+      })).filter(p => p.distance_km <= radius).sort((a,b) => a.distance_km - b.distance_km);
+    }
+    return providers;
+  }
+
+  // 3. Public Jobs / Feed
+  if (pathname.endsWith('/api/jobs/public') || pathname.endsWith('/api/bookings')) {
+    const type = urlObj.searchParams.get('type');
+    const status = urlObj.searchParams.get('status');
+    const search = urlObj.searchParams.get('search');
+    const radius = parseFloat(urlObj.searchParams.get('radius'));
+
+    let bookings = getLocalStore('bookings', DEFAULT_BOOKINGS);
+    if (type && type !== 'all') bookings = bookings.filter(b => b.type === type);
+    if (status && status !== 'all') bookings = bookings.filter(b => b.status === status);
+    if (search) {
+      const s = search.toLowerCase();
+      bookings = bookings.filter(b => (b.title && b.title.toLowerCase().includes(s)) || (b.address && b.address.toLowerCase().includes(s)));
+    }
+    if (radius && geoLocated) {
+      bookings = bookings.map(b => ({
+        ...b,
+        distance_km: parseFloat(haversineDist(userCoords.lat, userCoords.lon, b.latitude || 28.6139, b.longitude || 77.2090).toFixed(1))
+      })).filter(b => b.distance_km <= radius).sort((a,b) => a.distance_km - b.distance_km);
+    }
+    return bookings;
+  }
+
+  // 4. Single Booking
+  if (pathname.includes('/api/bookings/')) {
+    const id = parseInt(pathname.split('/').pop());
+    const bookings = getLocalStore('bookings', DEFAULT_BOOKINGS);
+    const bk = bookings.find(b => b.id === id);
+    if (bk) return bk;
+    return bookings[0] || {};
+  }
+
+  // 5. Auth / Me
+  if (pathname.endsWith('/api/auth/me')) {
+    if (currentUser) return currentUser;
+    return { id: 2, name: 'Priya Sharma', email: 'priya@example.com', role: 'customer' };
+  }
+
+  // 6. Upvote
+  if (pathname.includes('/upvote')) {
+    const id = parseInt(pathname.split('/')[3]);
+    let bookings = getLocalStore('bookings', DEFAULT_BOOKINGS);
+    const b = bookings.find(x => x.id === id);
+    if (b) {
+      b.upvotes = (b.upvotes || 0) + 1;
+      setLocalStore('bookings', bookings);
+      return { success: true, upvotes: b.upvotes };
+    }
+    return { success: true, upvotes: 1 };
+  }
+
+  // 7. Stats
+  if (pathname.endsWith('/api/admin/stats')) {
+    const bookings = getLocalStore('bookings', DEFAULT_BOOKINGS);
+    const providers = getLocalStore('providers', DEFAULT_PROVIDERS);
+    return {
+      totalUsers: 14,
+      customers: 10,
+      providers: providers.length,
+      totalBookings: bookings.length,
+      pendingBookings: bookings.filter(b => b.status === 'pending').length,
+      completedBookings: bookings.filter(b => b.status === 'completed').length,
+      totalRevenue: 28500,
+      unverifiedProviders: 1
+    };
+  }
+
+  return [];
 }
 
 async function apiFormData(path, formData) {
-  const opts = { method: 'POST', body: formData };
-  if (token) opts.headers = { 'Authorization': `Bearer ${token}` };
-  const res = await fetch(path, opts);
-  const data = await res.json();
-  if (!res.ok) throw data;
-  return data;
+  try {
+    const opts = { method: 'POST', body: formData };
+    if (token) opts.headers = { 'Authorization': `Bearer ${token}` };
+    const res = await fetch(path, opts);
+    if (res.ok) return await res.json();
+  } catch (err) {}
+
+  // Fallback locally
+  const newBooking = {
+    id: Date.now(),
+    title: formData.get('title') || 'New Request',
+    description: formData.get('description') || '',
+    type: formData.get('type') || 'repair',
+    category_name: 'Plumbing',
+    category_icon: '🔧',
+    address: formData.get('address') || 'Nearby Location',
+    scheduled_date: formData.get('scheduled_date') || 'Today',
+    scheduled_time: formData.get('scheduled_time') || 'Flexible',
+    status: 'pending',
+    priority: formData.get('priority') || 'normal',
+    budget_min: parseFloat(formData.get('budget_min')) || 500,
+    budget_max: parseFloat(formData.get('budget_max')) || 1500,
+    latitude: userCoords.lat,
+    longitude: userCoords.lon,
+    upvotes: 0,
+    quotes: []
+  };
+  const bookings = getLocalStore('bookings', DEFAULT_BOOKINGS);
+  bookings.unshift(newBooking);
+  setLocalStore('bookings', bookings);
+  return { success: true, id: newBooking.id };
 }
 
 // ==================== PAGES ====================
