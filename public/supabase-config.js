@@ -1,12 +1,9 @@
 // ==============================================================================
 // FixNear - Supabase Cloud Configuration
-// Optional: Paste your Supabase Project URL and Anon Public Key below
-// You can also connect directly from the website UI via the "⚡ Connect Supabase" button!
+// Connected to Project: FixNear (vypfvinrmjabusgipwxm)
 // ==============================================================================
 
 window.FIXNEAR_SUPABASE_CONFIG = {
-  // Replace with your project URL, e.g. "https://xyzcompany.supabase.co"
-  url: "",
-  // Replace with your project anon public API key, e.g. "eyJhbGciOi..."
-  anonKey: ""
+  url: "https://vypfvinrmjabusgipwxm.supabase.co",
+  anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5cGZ2aW5ybWphYnVzZ2lwd3htIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUwMTc4MDgsImV4cCI6MjExMDU5MzgwOH0.d9QjU0GvdvENA9h5_rXbXoBUX_-A8DynOa-YByIb79U"
 };
