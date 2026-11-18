@@ -1,0 +1,25 @@
+{
+  "name": "fixnear",
+  "version": "1.0.0",
+  "description": "FixNear – Find trusted services, Book without hassle. Hyperlocal service booking and civic grievance platform.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "keywords": [
+    "fixnear",
+    "home repair",
+    "local services",
+    "plumber",
+    "electrician",
+    "hyperlocal",
+    "booking",
+    "civic issues"
+  ],
+  "author": "mdfaizan786-aiml",
+  "license": "MIT"
+}

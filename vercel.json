@@ -1,31 +1,31 @@
 {
   "version": 2,
-  "cleanUrls": true,
-  "trailingSlash": true,
+  "builds": [
+    {
+      "src": "docs/**",
+      "use": "@vercel/static"
+    }
+  ],
   "routes": [
     {
-      "src": "/api/(.*)",
-      "dest": "/server.js"
-    },
-    {
-      "src": "/uploads/(.*)",
-      "dest": "/server.js"
-    },
-    {
       "src": "/mock-data.js",
-      "dest": "/public/mock-data.js"
+      "dest": "/docs/mock-data.js"
     },
     {
       "src": "/robots.txt",
-      "dest": "/public/robots.txt"
+      "dest": "/docs/robots.txt"
     },
     {
       "src": "/sitemap.xml",
-      "dest": "/public/sitemap.xml"
+      "dest": "/docs/sitemap.xml"
+    },
+    {
+      "src": "/404",
+      "dest": "/docs/404.html"
     },
     {
       "src": "/(.*)",
-      "dest": "/public/index.html"
+      "dest": "/docs/index.html"
     }
   ]
 }

@@ -2,3 +2,4 @@ User-agent: *
 Allow: /
 
 Sitemap: https://mdfaizan786-aiml.github.io/FixNear/sitemap.xml
+Sitemap: https://fixnear.vercel.app/sitemap.xml
