@@ -47,6 +47,15 @@ Use these pre-configured accounts to test each role right away:
 
 ---
 
+## ⚡ Supabase Cloud Database Integration
+
+FixNear includes built-in support for **Supabase PostgreSQL & Cloud Storage**:
+- **Setup Guide**: See [`SUPABASE_SETUP.md`](./SUPABASE_SETUP.md) for full instructions.
+- **SQL Schema & Seed Data**: [`supabase-schema.sql`](./supabase-schema.sql) contains tables, RLS policies, and 6 verified workers with rates and availability ready to run in Supabase SQL Editor.
+- **Connect in 1 Click**: Click the **⚡ Connect Supabase** button in the website navbar, paste your Project URL & Anon Key, and test live!
+
+---
+
 ## 🚀 Running Locally
 
 The server is already running and accessible at:

@@ -12,6 +12,14 @@
       "dest": "/docs/mock-data.js"
     },
     {
+      "src": "/supabase-client.js",
+      "dest": "/docs/supabase-client.js"
+    },
+    {
+      "src": "/supabase-config.js",
+      "dest": "/docs/supabase-config.js"
+    },
+    {
       "src": "/robots.txt",
       "dest": "/docs/robots.txt"
     },

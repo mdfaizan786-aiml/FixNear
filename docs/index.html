@@ -64,6 +64,10 @@
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <!-- Supabase Cloud Database Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="supabase-client.js"></script>
   <script src="mock-data.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap');
@@ -143,6 +147,12 @@
 
       <!-- Right Section -->
       <div class="flex items-center gap-3">
+        <!-- Supabase Cloud Indicator & Quick Connect -->
+        <button id="supabase-status-btn" onclick="openSupabaseModal()" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 shadow-sm" title="Click to manage Supabase database connection">
+          <span id="supabase-status-dot" class="w-2 h-2 rounded-full bg-slate-400"></span>
+          <span id="supabase-status-text">⚡ Supabase</span>
+        </button>
+
         <!-- Notification Bell -->
         <div id="notif-bell" class="hidden relative cursor-pointer p-2 rounded-full hover:bg-slate-100 transition" onclick="toggleNotifPanel()">
           <i data-lucide="bell" class="w-5 h-5 text-slate-600"></i>
@@ -668,6 +678,62 @@
   </div>
 </div>
 
+<!-- Supabase Cloud Setup & Sync Modal -->
+<div id="modal-supabase" class="fixed inset-0 modal-overlay z-[100] hidden flex items-center justify-center p-4">
+  <div class="bg-white rounded-3xl max-w-lg w-full shadow-2xl overflow-hidden border border-slate-100 fade-in">
+    <div class="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 px-6 py-5 text-white flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <span class="text-2xl">⚡</span>
+        <div>
+          <h3 class="font-extrabold text-base">Connect Supabase Cloud</h3>
+          <p class="text-xs text-emerald-100">PostgreSQL database & real-time sync</p>
+        </div>
+      </div>
+      <button onclick="closeSupabaseModal()" class="p-2 rounded-full hover:bg-white/20 text-white transition cursor-pointer"><i data-lucide="x" class="w-5 h-5"></i></button>
+    </div>
+    
+    <div class="p-6 space-y-4">
+      <div id="supabase-modal-alert" class="hidden p-3 rounded-xl text-xs font-semibold"></div>
+
+      <div class="text-xs text-slate-600 bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-1.5">
+        <div class="font-bold text-slate-800">Quick 3-Step Setup:</div>
+        <ol class="list-decimal list-inside space-y-1 text-[11px] text-slate-600">
+          <li>Create a free project at <a href="https://supabase.com" target="_blank" class="text-emerald-600 underline font-semibold">supabase.com</a></li>
+          <li>In <b>Project Settings → API</b>, copy your <b>Project URL</b> and <b>anon public key</b></li>
+          <li>Execute the SQL schema in <b>SQL Editor</b>, paste your credentials here & click Connect!</li>
+        </ol>
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-slate-700 mb-1">Supabase Project URL</label>
+        <input type="url" id="sb-input-url" placeholder="https://xyzcompany.supabase.co" class="input-cls text-xs py-2.5 bg-slate-50 font-mono">
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-slate-700 mb-1">Anon Public Key</label>
+        <input type="password" id="sb-input-key" placeholder="eyJhbGciOi..." class="input-cls text-xs py-2.5 bg-slate-50 font-mono">
+      </div>
+
+      <div class="flex items-center gap-2 pt-2">
+        <button type="button" onclick="testSupabaseFromModal()" id="sb-btn-test" class="btn-secondary text-xs py-2.5 px-4 font-bold flex items-center gap-1.5">
+          <span>Test Connection</span>
+        </button>
+        <button type="button" onclick="saveSupabaseFromModal()" class="btn-primary text-xs py-2.5 px-5 font-bold flex-1 bg-emerald-600 hover:bg-emerald-700 flex items-center justify-center gap-1.5">
+          <span>Save & Connect</span>
+        </button>
+      </div>
+
+      <div class="border-t border-slate-100 pt-3 flex items-center justify-between text-[11px]">
+        <button type="button" onclick="copySupabaseSchemaNotice()" class="text-emerald-700 font-bold hover:underline flex items-center gap-1">
+          <i data-lucide="file-code" class="w-3.5 h-3.5"></i>
+          <span>View / Copy SQL Schema</span>
+        </button>
+        <button type="button" onclick="clearSupabaseFromModal()" class="text-slate-400 hover:text-red-500 font-medium">Disconnect</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div id="toast" class="fixed bottom-6 right-6 z-[200] hidden">
   <div id="toast-body" class="flex items-center gap-3 px-5 py-3 rounded-2xl shadow-xl text-sm font-semibold text-white min-w-[220px]"></div>
@@ -690,6 +756,7 @@ let civicMapMarkers = [];
 // ==================== INIT ====================
 async function init() {
   lucide.createIcons();
+  updateSupabaseUIStatus();
   loadCategories();
   loadHomeSections();
 
@@ -706,6 +773,100 @@ async function init() {
       document.getElementById('notif-panel').classList.add('hidden');
     }
   };
+}
+
+// ==================== SUPABASE UI & STATE HELPERS ====================
+function updateSupabaseUIStatus() {
+  const btn = document.getElementById('supabase-status-btn');
+  const dot = document.getElementById('supabase-status-dot');
+  const text = document.getElementById('supabase-status-text');
+  if (!btn || !window.FixNearSupabase) return;
+
+  if (FixNearSupabase.isConfigured()) {
+    btn.className = 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 shadow-sm cursor-pointer';
+    dot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-pulse';
+    text.textContent = '⚡ Supabase Live';
+  } else {
+    btn.className = 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 shadow-sm cursor-pointer';
+    dot.className = 'w-2 h-2 rounded-full bg-slate-400';
+    text.textContent = '⚡ Connect Supabase';
+  }
+}
+
+function openSupabaseModal() {
+  const modal = document.getElementById('modal-supabase');
+  if (!modal) return;
+  const cfg = FixNearSupabase.getConfig();
+  document.getElementById('sb-input-url').value = cfg.url || '';
+  document.getElementById('sb-input-key').value = cfg.key || '';
+  const alertEl = document.getElementById('supabase-modal-alert');
+  alertEl.className = 'hidden';
+  modal.classList.remove('hidden');
+}
+
+function closeSupabaseModal() {
+  document.getElementById('modal-supabase').classList.add('hidden');
+}
+
+async function testSupabaseFromModal() {
+  const url = document.getElementById('sb-input-url').value.trim();
+  const key = document.getElementById('sb-input-key').value.trim();
+  const alertEl = document.getElementById('supabase-modal-alert');
+  const btn = document.getElementById('sb-btn-test');
+  
+  if (!url || !key) {
+    alertEl.className = 'p-3 rounded-xl text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200 block';
+    alertEl.textContent = 'Please enter both Supabase Project URL and Anon Key first.';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Testing...';
+
+  const res = await FixNearSupabase.testConnection(url, key);
+  btn.disabled = false;
+  btn.textContent = 'Test Connection';
+
+  if (res.success) {
+    alertEl.className = 'p-3 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 block';
+    alertEl.textContent = '✅ Connected to Supabase PostgreSQL successfully!';
+  } else {
+    alertEl.className = 'p-3 rounded-xl text-xs font-semibold bg-red-50 text-red-800 border border-red-200 block';
+    alertEl.textContent = '⚠️ ' + res.message;
+  }
+}
+
+function saveSupabaseFromModal() {
+  const url = document.getElementById('sb-input-url').value.trim();
+  const key = document.getElementById('sb-input-key').value.trim();
+  const alertEl = document.getElementById('supabase-modal-alert');
+
+  if (!url || !key) {
+    alertEl.className = 'p-3 rounded-xl text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200 block';
+    alertEl.textContent = 'Please enter both Supabase Project URL and Anon Key.';
+    return;
+  }
+
+  FixNearSupabase.setConfig(url, key);
+  updateSupabaseUIStatus();
+  closeSupabaseModal();
+  showToast('⚡ Supabase connected! Reloading live catalog...', 'success');
+  loadCategories();
+  loadHomeSections();
+}
+
+function clearSupabaseFromModal() {
+  FixNearSupabase.clearConfig();
+  document.getElementById('sb-input-url').value = '';
+  document.getElementById('sb-input-key').value = '';
+  updateSupabaseUIStatus();
+  closeSupabaseModal();
+  showToast('Supabase disconnected. Switched to local mode.', 'info');
+}
+
+function copySupabaseSchemaNotice() {
+  window.open('https://github.com/mdfaizan786-aiml/FixNear/blob/main/supabase-schema.sql', '_blank');
+  showToast('Opening supabase-schema.sql on GitHub', 'info');
 }
 
 function detectLocation() {
@@ -758,6 +919,52 @@ async function api(method, path, body) {
   // --- Client-side fallback handlers ---
   const urlObj = new URL(path, window.location.origin);
   const pathname = urlObj.pathname;
+
+  // --- Supabase Cloud Integration (if connected) ---
+  if (window.FixNearSupabase && FixNearSupabase.isConfigured()) {
+    try {
+      if (pathname.endsWith('/api/categories')) {
+        const type = urlObj.searchParams.get('type');
+        const sbCats = await FixNearSupabase.getCategories(type);
+        if (sbCats && sbCats.length > 0) return sbCats;
+      }
+      if (pathname.endsWith('/api/providers')) {
+        const sbProviders = await FixNearSupabase.getProviders();
+        if (sbProviders && sbProviders.length > 0) {
+          let providers = sbProviders;
+          const skill = urlObj.searchParams.get('skill');
+          const radius = parseFloat(urlObj.searchParams.get('radius'));
+          if (skill) {
+            providers = providers.filter(p => {
+              try { return JSON.parse(p.skills || '[]').some(s => s.toLowerCase().includes(skill.toLowerCase())); } catch { return false; }
+            });
+          }
+          if (radius && geoLocated) {
+            providers = providers.map(p => ({
+              ...p,
+              distance_km: parseFloat(haversineDist(userCoords.lat, userCoords.lon, p.latitude, p.longitude).toFixed(1))
+            })).filter(p => p.distance_km <= radius).sort((a,b) => a.distance_km - b.distance_km);
+          }
+          return providers;
+        }
+      }
+      if (pathname.endsWith('/api/jobs/public') || pathname.endsWith('/api/bookings')) {
+        if (method === 'GET') {
+          const type = urlObj.searchParams.get('type');
+          const status = urlObj.searchParams.get('status');
+          const sbBookings = await FixNearSupabase.getBookings(type, status);
+          if (sbBookings && sbBookings.length > 0) return sbBookings;
+        }
+      }
+      if (pathname.includes('/upvote')) {
+        const id = parseInt(pathname.split('/')[3]);
+        const count = await FixNearSupabase.upvoteCivicIssue(id);
+        if (count !== null) return { success: true, upvotes: count };
+      }
+    } catch (sbErr) {
+      console.warn('Supabase query error, fallback to mock:', sbErr);
+    }
+  }
 
   // 1. Categories
   if (pathname.endsWith('/api/categories')) {
@@ -864,6 +1071,28 @@ async function apiFormData(path, formData) {
     const res = await fetch(path, opts);
     if (res.ok) return await res.json();
   } catch (err) {}
+
+  // If Supabase Cloud is connected, persist booking directly in PostgreSQL
+  if (window.FixNearSupabase && FixNearSupabase.isConfigured()) {
+    try {
+      const created = await FixNearSupabase.createBooking({
+        title: formData.get('title') || 'New Request',
+        description: formData.get('description') || '',
+        type: formData.get('type') || 'repair',
+        address: formData.get('address') || 'Nearby Location',
+        scheduled_date: formData.get('scheduled_date') || 'Today',
+        scheduled_time: formData.get('scheduled_time') || 'Flexible',
+        priority: formData.get('priority') || 'normal',
+        budget_min: parseFloat(formData.get('budget_min')) || 500,
+        budget_max: parseFloat(formData.get('budget_max')) || 1500,
+        latitude: userCoords.lat,
+        longitude: userCoords.lon
+      });
+      if (created) return { success: true, id: created.id };
+    } catch (e) {
+      console.warn('Supabase createBooking error, fallback to local:', e);
+    }
+  }
 
   // Fallback locally
   const newBooking = {

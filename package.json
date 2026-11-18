@@ -10,6 +10,9 @@
   "engines": {
     "node": ">=22.0.0"
   },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.48.0"
+  },
   "keywords": [
     "fixnear",
     "home repair",
@@ -18,7 +21,8 @@
     "electrician",
     "hyperlocal",
     "booking",
-    "civic issues"
+    "civic issues",
+    "supabase"
   ],
   "author": "mdfaizan786-aiml",
   "license": "MIT"
